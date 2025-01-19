@@ -6,7 +6,6 @@ import com.labwork.islabfirst.dto.StationDto;
 import com.labwork.islabfirst.dto.request.CreateBicycleRequest;
 import com.labwork.islabfirst.dto.request.CreateStationRequest;
 import com.labwork.islabfirst.entity.model.Bicycle;
-import com.labwork.islabfirst.entity.model.Person;
 import com.labwork.islabfirst.entity.model.Station;
 import com.labwork.islabfirst.handler.EntityNotFoundByIdException;
 import com.labwork.islabfirst.mapper.BicycleMapper;
@@ -41,7 +40,7 @@ public class BicycleService {
 
         var bicycle = bicycleMapper.toEntity(request);
         Station station = stationRepository.findById(request.station_id())
-                .orElseThrow(() -> new EntityNotFoundByIdException(Person.class, request.station_id()));
+                .orElseThrow(() -> new EntityNotFoundByIdException(Station.class, request.station_id()));
         bicycle.setStation(station);
 
         var saved = bicycleRepository.save(bicycle);

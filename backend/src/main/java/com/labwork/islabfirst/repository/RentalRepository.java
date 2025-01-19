@@ -1,6 +1,5 @@
 package com.labwork.islabfirst.repository;
 
-import com.labwork.islabfirst.entity.model.Person;
 import com.labwork.islabfirst.entity.model.Rental;
 import com.labwork.islabfirst.entity.model.Station;
 import org.springframework.data.domain.Page;

@@ -2,8 +2,6 @@ package com.labwork.islabfirst.repository;
 
 
 import com.labwork.islabfirst.entity.model.Bicycle;
-import com.labwork.islabfirst.entity.model.Movie;
-import com.labwork.islabfirst.entity.model.Station;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

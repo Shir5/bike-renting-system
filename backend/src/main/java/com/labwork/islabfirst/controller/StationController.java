@@ -1,9 +1,7 @@
 package com.labwork.islabfirst.controller;
 
 
-import com.labwork.islabfirst.dto.PersonDto;
 import com.labwork.islabfirst.dto.StationDto;
-import com.labwork.islabfirst.dto.request.CreatePersonRequest;
 import com.labwork.islabfirst.dto.request.CreateStationRequest;
 import com.labwork.islabfirst.service.StationService;
 import lombok.RequiredArgsConstructor;
