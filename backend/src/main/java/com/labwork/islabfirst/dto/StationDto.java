@@ -6,14 +6,12 @@ public record StationDto(
         @JsonProperty("id")
         Long id,
 
-        @JsonProperty("address")
-        String address,
+        @JsonProperty("name")
+        String name,
 
         @JsonProperty("coordinates")
         CoordinatesDto coordinates,
 
-        @JsonProperty("totalSlots")
-        Long totalSlots,
 
         @JsonProperty("availableBicycles")
         Long availableBicycles

@@ -4,6 +4,9 @@ import com.labwork.islabfirst.dto.response.JwtResponse;
 import com.labwork.islabfirst.dto.request.LoginRequest;
 import com.labwork.islabfirst.dto.request.RegisterRequest;
 import com.labwork.islabfirst.dto.UserDto;
+import com.labwork.islabfirst.dto.response.RoleResponse;
+import com.labwork.islabfirst.dto.response.UserResponse;
+import com.labwork.islabfirst.handler.EntityNotFoundByUsernameException;
 import com.labwork.islabfirst.mapper.UserMapper;
 import com.labwork.islabfirst.entity.security.Role;
 import com.labwork.islabfirst.entity.security.User;
@@ -15,9 +18,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +47,17 @@ public class AuthenticationService {
         var user = findUserByUsername(request.username());
         return generateJwt(user);
     }
+    public UserResponse getInfo() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundByUsernameException(User.class, username));
+
+
+        return new UserResponse(username,user.getBalance(), user.getDebt());
+    }
 
 
     public JwtResponse registerUser(RegisterRequest request) {
@@ -56,6 +75,8 @@ public class AuthenticationService {
         User user = userMapper.toEntity(request);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRole(Role.USER);
+        user.setBalance(0L);
+        user.setDebt(0L);
         return userRepository.save(user);
     }
 

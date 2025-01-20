@@ -1,6 +1,7 @@
 package com.labwork.islabfirst.entity.security;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -41,12 +42,14 @@ public class User implements UserDetails {
     @Column(name = "userStatus", nullable = true)
     private UserStatus userStatus;
 
+    @Min(0)  // Минимальное значение для balance должно быть 0
+    @Column(name = "balance", nullable = true, columnDefinition = "BIGINT DEFAULT 0")
+    private Long balance = 0L;
 
-    @Column(name = "balance", nullable = true)
-    private Long balance;
 
-    @Column(name = "debt", nullable = true)
-    private Long debt;
+    @Min(0)
+    @Column(name = "debt", nullable = true, columnDefinition = "BIGINT DEFAULT 0")
+    private Long debt = 0L;
 
     @CreationTimestamp
     @Column(name = "registrationDate", nullable = false)

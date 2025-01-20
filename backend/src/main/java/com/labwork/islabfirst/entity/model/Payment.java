@@ -44,7 +44,7 @@ public class Payment {
     private Long amount; //Поле не может быть null, Значение этого поля должно генерироваться автоматически
 
 
-    @NotNull
+    @CreationTimestamp
     @Column(name = "paymentDate", updatable = true)
     private Date paymentDate; //Поле не может быть null, Значение этого поля должно генерироваться автоматически
 

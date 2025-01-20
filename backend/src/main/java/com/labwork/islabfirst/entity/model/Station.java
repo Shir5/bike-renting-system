@@ -35,16 +35,13 @@ public class Station {
 
 
     @NotNull
-    @Column(name="address", nullable = false)
-    private String address; //Поле не может быть null, Строка не может быть пустой
+    @Column(name="name", nullable = false)
+    private String name; //Поле не может быть null, Строка не может быть пустой
 
     @NotNull
     @Embedded
     private Coordinates coordinates; //Поле не может быть null
 
-    @NotNull
-    @Column(name="totalSlots", nullable = false)
-    private Long totalSlots; //Поле не может быть null, Строка не может быть пустой
 
     @Column(name="availableBicycles")
     private Long availableBicycles;

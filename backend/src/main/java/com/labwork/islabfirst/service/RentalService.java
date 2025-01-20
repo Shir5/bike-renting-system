@@ -43,15 +43,27 @@ public class RentalService {
 
         User user = userRepository.findById(request.user_id())
                 .orElseThrow(() -> new EntityNotFoundByIdException(User.class, request.user_id()));
+
+        if (user.getBalance() == 0 || user.getDebt() != 0) {
+            throw new IllegalStateException("User cannot rent a bicycle with zero balance or non-zero debt.");
+        }
+        rental.setUser(user);
+
         rental.setUser(user);
         Bicycle bicycle = bicycleRepository.findById(request.bicycle_id())
                 .orElseThrow(() -> new EntityNotFoundByIdException(Bicycle.class, request.bicycle_id()));
+
+        // Добавляем проверку статуса велосипеда
+        if (bicycle.getStatus() == BicycleStatus.RENTED) {
+            throw new IllegalStateException("This bicycle is already rented and cannot be taken again.");
+        }
         rental.setBicycle(bicycle);
 
         Station start_station = stationRepository.findById(request.start_station_id())
                 .orElseThrow(() -> new EntityNotFoundByIdException(Station.class, request.start_station_id()));
         rental.setStart_station(start_station);
 
+        rental.setCost(0D);
         bicycle.setStatus(BicycleStatus.RENTED);
         bicycleRepository.save(bicycle);
         var saved = rentalRepository.save(rental);
@@ -83,10 +95,42 @@ public class RentalService {
                 .orElseThrow(() -> new EntityNotFoundByIdException(Bicycle.class, id));
 
         bicycle.setStatus(BicycleStatus.AVAILABLE);
+
+
+
         bicycleRepository.save(bicycle);
+
+        double costPerMinute = 6;  // Стоимость за минуту
+        long durationInMinutes = calculateRentalDurationInMinutes(original.getRentalStartedAt(), updated.getRentalEndedAt());
+
+        double totalCost = costPerMinute * durationInMinutes;
+        updated.setCost(totalCost);
+
+        // Получаем пользователя
+        User user = updated.getUser();
+
+        // Проверка баланса пользователя перед завершением аренды
+        if (user.getBalance() < totalCost) {
+            // Если баланса недостаточно, списываем все с баланса и добавляем остальное к долгу
+            double remainingDebt = totalCost - user.getBalance();
+            user.setBalance(0L);  // Списываем весь баланс
+            user.setDebt(user.getDebt() + (long) remainingDebt);  // Добавляем оставшуюся сумму к долгу
+        } else {
+            // Если хватает средств на балансе, списываем стоимость поездки с баланса
+            user.setBalance(user.getBalance() - (long) totalCost);
+        }
+
+        userRepository.save(user);  // Сохраняем изменения в пользователе
+
+
+
         var saved = rentalRepository.save(updated);
 
         return rentalMapper.toDto(saved);
+    }
+
+    private long calculateRentalDurationInMinutes(LocalDateTime start, LocalDateTime end) {
+        return java.time.Duration.between(start, end).toMinutes();
     }
 
 }

@@ -3,10 +3,10 @@ package com.labwork.islabfirst.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record CoordinatesDto(
-        @JsonProperty("x")
-        Long x,
+        @JsonProperty("latitude")
+        Long latitude,
 
-        @JsonProperty("y")
-        Long y
+        @JsonProperty("longitude")
+        Long longitude
 ) {
 }

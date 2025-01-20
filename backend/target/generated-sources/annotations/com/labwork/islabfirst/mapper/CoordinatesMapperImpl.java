@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-01-19T18:54:51+0300",
+    date = "2025-01-21T01:55:47+0300",
     comments = "version: 1.6.2, compiler: javac, environment: Java 17.0.13 (Amazon.com Inc.)"
 )
 @Component
@@ -21,8 +21,8 @@ public class CoordinatesMapperImpl implements CoordinatesMapper {
 
         Coordinates.CoordinatesBuilder coordinates = Coordinates.builder();
 
-        coordinates.x( dto.x() );
-        coordinates.y( dto.y() );
+        coordinates.latitude( dto.latitude() );
+        coordinates.longitude( dto.longitude() );
 
         return coordinates.build();
     }
@@ -33,13 +33,13 @@ public class CoordinatesMapperImpl implements CoordinatesMapper {
             return null;
         }
 
-        Long x = null;
-        Long y = null;
+        Long latitude = null;
+        Long longitude = null;
 
-        x = entity.getX();
-        y = entity.getY();
+        latitude = entity.getLatitude();
+        longitude = entity.getLongitude();
 
-        CoordinatesDto coordinatesDto = new CoordinatesDto( x, y );
+        CoordinatesDto coordinatesDto = new CoordinatesDto( latitude, longitude );
 
         return coordinatesDto;
     }

@@ -13,4 +13,8 @@ public class ExceptionHandler {
         return new ResponseEntity<>("Cannot authenticate: " + e.getMessage(), HttpStatus.FORBIDDEN);
     }
 
+    @org.springframework.web.bind.annotation.ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Object> handleIllegalStateException(IllegalStateException e) {
+        return new ResponseEntity<>("Error in renting: " + e.getMessage(), HttpStatus.FORBIDDEN);
+    }
 }

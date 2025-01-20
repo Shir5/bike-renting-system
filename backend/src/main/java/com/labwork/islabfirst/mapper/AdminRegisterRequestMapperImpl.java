@@ -84,11 +84,15 @@ public class AdminRegisterRequestMapperImpl implements AdminRegisterRequestMappe
 
         Long id = null;
         String username = null;
+        Long balance = null;
+        Long debt = null;
 
         id = user.getId();
         username = user.getUsername();
+        balance = user.getBalance();
+        debt = user.getDebt();
 
-        UserDto userDto = new UserDto( id, username );
+        UserDto userDto = new UserDto( id, username, balance, debt );
 
         return userDto;
     }

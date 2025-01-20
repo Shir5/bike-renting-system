@@ -68,8 +68,7 @@ public class Rental {
 
 
 
-    @NotNull
-    @Column(name = "cost", updatable = false)
+    @Column(name = "cost", updatable = true)
     private Double cost; // Новое поле для времени окончания аренды
 
 

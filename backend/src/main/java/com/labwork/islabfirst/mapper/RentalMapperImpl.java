@@ -58,9 +58,6 @@ public class RentalMapperImpl implements RentalMapper {
 
         Rental rental = new Rental();
 
-        if ( request.cost() != null ) {
-            rental.setCost( request.cost().doubleValue() );
-        }
 
         return rental;
     }

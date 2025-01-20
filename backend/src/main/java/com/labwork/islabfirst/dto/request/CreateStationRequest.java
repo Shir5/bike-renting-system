@@ -5,13 +5,10 @@ import com.labwork.islabfirst.dto.CoordinatesDto;
 import com.labwork.islabfirst.entity.model.Coordinates;
 
 public record CreateStationRequest(
-        @JsonProperty("address")
-        String address,
+        @JsonProperty("name")
+        String name,
 
         @JsonProperty("coordinates")
-        CoordinatesDto coordinates,
-
-        @JsonProperty("totalSlots")
-        Long totalSlots
+        CoordinatesDto coordinates
 ) {
 }

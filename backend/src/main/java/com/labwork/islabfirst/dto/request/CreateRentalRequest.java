@@ -8,9 +8,6 @@ public record CreateRentalRequest(
         @JsonProperty("bicycle")
         Long bicycle_id,
         @JsonProperty("start_station")
-        Long start_station_id,
-
-        @JsonProperty("cost")
-        Long cost
+        Long start_station_id
 ) {
 }

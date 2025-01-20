@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-01-19T18:54:51+0300",
+    date = "2025-01-21T01:55:47+0300",
     comments = "version: 1.6.2, compiler: javac, environment: Java 17.0.13 (Amazon.com Inc.)"
 )
 @Component
@@ -25,9 +25,8 @@ public class StationMapperImpl implements StationMapper {
         Station station = new Station();
 
         station.setId( dto.id() );
-        station.setAddress( dto.address() );
+        station.setName( dto.name() );
         station.setCoordinates( coordinatesDtoToCoordinates( dto.coordinates() ) );
-        station.setTotalSlots( dto.totalSlots() );
         station.setAvailableBicycles( dto.availableBicycles() );
 
         return station;
@@ -40,18 +39,16 @@ public class StationMapperImpl implements StationMapper {
         }
 
         Long id = null;
-        String address = null;
+        String name = null;
         CoordinatesDto coordinates = null;
-        Long totalSlots = null;
         Long availableBicycles = null;
 
         id = entity.getId();
-        address = entity.getAddress();
+        name = entity.getName();
         coordinates = coordinatesToCoordinatesDto( entity.getCoordinates() );
-        totalSlots = entity.getTotalSlots();
         availableBicycles = entity.getAvailableBicycles();
 
-        StationDto stationDto = new StationDto( id, address, coordinates, totalSlots, availableBicycles );
+        StationDto stationDto = new StationDto( id, name, coordinates, availableBicycles );
 
         return stationDto;
     }
@@ -64,9 +61,8 @@ public class StationMapperImpl implements StationMapper {
 
         Station station = new Station();
 
-        station.setAddress( request.address() );
+        station.setName( request.name() );
         station.setCoordinates( coordinatesDtoToCoordinates( request.coordinates() ) );
-        station.setTotalSlots( request.totalSlots() );
 
         return station;
     }
@@ -78,8 +74,8 @@ public class StationMapperImpl implements StationMapper {
 
         Coordinates.CoordinatesBuilder coordinates = Coordinates.builder();
 
-        coordinates.x( coordinatesDto.x() );
-        coordinates.y( coordinatesDto.y() );
+        coordinates.latitude( coordinatesDto.latitude() );
+        coordinates.longitude( coordinatesDto.longitude() );
 
         return coordinates.build();
     }
@@ -89,13 +85,13 @@ public class StationMapperImpl implements StationMapper {
             return null;
         }
 
-        Long x = null;
-        Long y = null;
+        Long latitude = null;
+        Long longitude = null;
 
-        x = coordinates.getX();
-        y = coordinates.getY();
+        latitude = coordinates.getLatitude();
+        longitude = coordinates.getLongitude();
 
-        CoordinatesDto coordinatesDto = new CoordinatesDto( x, y );
+        CoordinatesDto coordinatesDto = new CoordinatesDto( latitude, longitude );
 
         return coordinatesDto;
     }
