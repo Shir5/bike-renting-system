@@ -21,9 +21,12 @@ public class StationService {
     private final StationMapper stationMapper;
     private final StationRepository stationRepository;
 
-    public Page<StationDto> findAllWithFilters(String name, Pageable pageable) {
-        if (name != null) {
-            return stationRepository.findAllByName(name, pageable).map(stationMapper::toDto);
+
+    public Page<StationDto> findAllWithFilters(Long id, Pageable pageable) {
+        if (id != null) {
+
+
+            return stationRepository.findAllById(id, pageable).map(stationMapper::toDto);
         }
 
         return stationRepository.findAll(pageable).map(stationMapper::toDto);

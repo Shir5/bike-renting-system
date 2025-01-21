@@ -11,5 +11,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BicycleRepository extends JpaRepository<Bicycle, Long> {
     Page<Bicycle> findAllByModel(@NonNull String model, @NonNull Pageable pageable);
+    Page<Bicycle> findAllByStationId(@NonNull Long station_id, @NonNull Pageable pageable);
 
 }

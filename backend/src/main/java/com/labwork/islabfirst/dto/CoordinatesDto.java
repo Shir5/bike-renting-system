@@ -4,9 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record CoordinatesDto(
         @JsonProperty("latitude")
-        Long latitude,
+        float latitude,
 
         @JsonProperty("longitude")
-        Long longitude
+        float longitude
 ) {
 }

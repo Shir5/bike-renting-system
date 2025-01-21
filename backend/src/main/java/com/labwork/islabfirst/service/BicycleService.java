@@ -35,6 +35,13 @@ public class BicycleService {
         return bicycleRepository.findAll(pageable).map(bicycleMapper::toDto);
     }
 
+    public Page<BicycleDto> findAllByStationId(Long stationId, Pageable pageable) {
+        if (stationId != null) {
+            return bicycleRepository.findAllByStationId(stationId, pageable).map(bicycleMapper::toDto);
+        }
+        return bicycleRepository.findAll(pageable).map(bicycleMapper::toDto);
+    }
+
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public BicycleDto create(CreateBicycleRequest request) {
 

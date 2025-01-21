@@ -14,9 +14,9 @@ import lombok.*;
 public class Coordinates {
     @NotNull
     @Column(nullable = false)
-    private Long latitude;
+    private float latitude;
 
     @NotNull
     @Column(nullable = false)
-    private Long longitude;
+    private float longitude;
 }
