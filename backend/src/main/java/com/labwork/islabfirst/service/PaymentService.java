@@ -14,6 +14,8 @@ import com.labwork.islabfirst.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,8 +45,14 @@ public class PaymentService {
     public PaymentDto create(CreatePaymentRequest request) {
 
         var payment = paymentMapper.toEntity(request);
-        User user = userRepository.findById(request.user_id())
-                .orElseThrow(() -> new EntityNotFoundByIdException(User.class, request.user_id()));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundByUsernameException(User.class, username));
+
         user.setBalance(user.getBalance() + payment.getAmount());
         payment.setUser(user);
 

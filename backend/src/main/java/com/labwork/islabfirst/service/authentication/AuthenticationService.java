@@ -7,6 +7,7 @@ import com.labwork.islabfirst.dto.UserDto;
 import com.labwork.islabfirst.dto.response.RoleResponse;
 import com.labwork.islabfirst.dto.response.UserResponse;
 import com.labwork.islabfirst.handler.EntityNotFoundByUsernameException;
+import com.labwork.islabfirst.handler.UniqueConstraintViolationException;
 import com.labwork.islabfirst.mapper.UserMapper;
 import com.labwork.islabfirst.entity.security.Role;
 import com.labwork.islabfirst.entity.security.User;
@@ -65,6 +66,9 @@ public class AuthenticationService {
             throw new IllegalArgumentException("Password must be at least 4 characters long.");
         }
 
+        if(userRepository.findByUsername(request.username()).isPresent()){
+            throw new UniqueConstraintViolationException(User.class, request.username());
+        }
         var user = createUser(request);
         return generateJwt(user);
     }
