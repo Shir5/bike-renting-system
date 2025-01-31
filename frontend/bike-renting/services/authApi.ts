@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Базовый URL API
-const API_URL = 'http://92.100.188.183:24120/islabFirst-0.1/api';
+const API_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api';
 
 // Создаём экземпляр axios с базовой настройкой
 const api = axios.create({ baseURL: API_URL });

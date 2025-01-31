@@ -11,7 +11,7 @@ export interface Bicycle {
 }
 
 // Укажите базовый URL вашего API
-const API_BASE_URL = 'http://92.100.188.183:24120/islabFirst-0.1/api/station/bicycle'; // Замените на ваш IP-адрес для эмулятора Android
+const API_BASE_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api/station/bicycle'; // Замените на ваш IP-адрес для эмулятора Android
 
 export const fetchBicyclesByStationId = async (
     stationId: number,

@@ -28,7 +28,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen() {
     const [isLoading, setIsLoading] = useState(true);
-    const { userToken, userId, login, logout } = useContext(AuthContext);
+    const { userToken, login, logout } = useContext(AuthContext);
     const [menuOpen, setMenuOpen] = useState(false);
     const [stations, setStations] = useState<Station[]>([]);
     const [selectedStation, setSelectedStation] = useState<Station | null>(null);
@@ -39,6 +39,7 @@ export default function HomeScreen() {
     const [userBalance, setUserBalance] = useState<number>(100); // Текущий баланс пользователя
     const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false);
     const [addAmount, setAddAmount] = useState<string>(''); // Сумма для пополнения
+    const truncatedBalance = userBalance.toString().slice(0, 6);
 
     const handleRentBicycle = async (bicycleId: number) => {
         try {
@@ -191,7 +192,7 @@ export default function HomeScreen() {
                 <View style={styles.balanceContainer}>
                     <TouchableOpacity onPress={() => setIsBalanceModalVisible(true)}>
                         <Icon name="credit-card" size={24} color="#333" />
-                        <Text style={styles.balanceText}>{userBalance} ₽</Text>
+                        <Text style={styles.balanceText} >{truncatedBalance} ₽</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -214,9 +215,11 @@ export default function HomeScreen() {
                                     latitude: station.latitude,
                                     longitude: station.longitude,
                                 }}
+                                image={require('../assets/images/scooter.png')}
                                 title={station.name}
                                 description={`Доступно велосипедов: ${station.availableBikes}`}
                                 onPress={() => handleMarkerPress(station)}
+                                calloutOffset={{x: 0.5 , y: 0.5}}
                             />
                         ))}
                     </MapView>

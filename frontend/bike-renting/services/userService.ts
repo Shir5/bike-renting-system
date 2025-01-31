@@ -8,7 +8,7 @@ export interface UserResponse {
 
 export const fetchUserInfo = async (token: string): Promise<UserResponse | null> => {
     try {
-        const response = await axios.get('http://92.100.188.183:24120/islabFirst-0.1/api/auth/info', {
+        const response = await axios.get('http://178.69.216.14:24120/islabFirst-0.1/api/auth/info', {
             headers: {
                 Authorization: `Bearer ${token}`, // Передаем токен аутентификации
             },

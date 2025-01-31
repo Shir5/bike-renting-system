@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://92.100.188.183:24120/islabFirst-0.1/api/station';
+const API_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api/station';
 
 export type Station = {
     id: number;
