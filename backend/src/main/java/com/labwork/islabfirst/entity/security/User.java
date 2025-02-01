@@ -1,6 +1,7 @@
 package com.labwork.islabfirst.entity.security;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -43,11 +44,13 @@ public class User implements UserDetails {
     private UserStatus userStatus;
 
     @Min(0)  // Минимальное значение для balance должно быть 0
+    @Max(999999)
     @Column(name = "balance", nullable = true, columnDefinition = "BIGINT DEFAULT 0")
     private Long balance = 0L;
 
 
     @Min(0)
+    @Max(999999)
     @Column(name = "debt", nullable = true, columnDefinition = "BIGINT DEFAULT 0")
     private Long debt = 0L;
 

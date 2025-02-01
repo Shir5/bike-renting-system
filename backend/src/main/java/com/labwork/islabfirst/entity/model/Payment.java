@@ -5,6 +5,7 @@ package com.labwork.islabfirst.entity.model;
 import com.labwork.islabfirst.entity.security.OwnedEntity;
 import com.labwork.islabfirst.entity.security.User;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -40,6 +41,7 @@ public class Payment {
 
 
     @NotNull
+    @Max(999999)
     @Column(name = "amount", updatable = true)
     private Long amount; //Поле не может быть null, Значение этого поля должно генерироваться автоматически
 
