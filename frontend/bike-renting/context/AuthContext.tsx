@@ -3,71 +3,89 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { ActivityIndicator } from 'react-native';
 
+// Extend the type to include userId
 type AuthContextType = {
     userToken: string | null;
-    login: (token: string) => void;
+    userId: number | null;
+    login: (token: string, userId: number) => void;
     logout: () => void;
 };
 
 export const AuthContext = createContext<AuthContextType>({
     userToken: null,
-    login: () => {},
-    logout: () => {},
+    userId: null,
+    login: () => { },
+    logout: () => { },
 });
+
 type Props = {
     children: ReactNode;
 };
+
 export function AuthProvider({ children }: Props) {
     const [userToken, setUserToken] = useState<string | null>(null);
+    const [userId, setUserId] = useState<number | null>(null);
     const [isTokenLoading, setIsTokenLoading] = useState(true);
 
     useEffect(() => {
-        const loadToken = async () => {
+        const loadTokenAndUserId = async () => {
             try {
                 const storedToken = await AsyncStorage.getItem('userToken');
+                const storedUserId = await AsyncStorage.getItem('userId');
                 if (storedToken) {
                     setUserToken(storedToken);
-                    console.log('Токен загружен из AsyncStorage:', storedToken);
+                    console.log('Token loaded from AsyncStorage:', storedToken);
                 }
-
+                if (storedUserId) {
+                    setUserId(Number(storedUserId));
+                    console.log('UserId loaded from AsyncStorage:', storedUserId);
+                }
             } catch (error) {
-                console.error('Ошибка при загрузке токена из AsyncStorage:', error);
+                console.error('Error loading token from AsyncStorage:', error);
             } finally {
                 setIsTokenLoading(false);
             }
         };
-        loadToken();
+        loadTokenAndUserId();
     }, []);
 
-    const login = async (token: string) => {
+    const login = async (token: string, id: number) => {
         try {
             setUserToken(token);
+            setUserId(id);
             await AsyncStorage.setItem('userToken', token);
-            console.log('Токен сохранен в AsyncStorage:', token);
+            await AsyncStorage.setItem('userId', id.toString());
+            console.log('Token and userId saved to AsyncStorage:', token, id);
         } catch (error) {
-            console.error('Ошибка при сохранении токена в AsyncStorage:', error);
+            console.error('Error saving token and userId to AsyncStorage:', error);
         }
     };
 
     const logout = async () => {
         try {
             await AsyncStorage.removeItem('userToken');
+            await AsyncStorage.removeItem('userId');
             setUserToken(null);
-            console.log('Токен удалены из AsyncStorage');
+            setUserId(null);
+            console.log('Token and userId removed from AsyncStorage');
             router.replace('/register');
         } catch (error) {
-            console.error('Ошибка при удалении токена и userId из AsyncStorage:', error);
+            console.error('Error removing token and userId from AsyncStorage:', error);
         }
     };
 
     if (isTokenLoading) {
         return (
-            <ActivityIndicator size="large" color="#0000ff" style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} />
+            <ActivityIndicator
+                size="large"
+                color="#0000ff"
+                style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+            />
         );
     }
 
     return (
-        <AuthContext.Provider value={{ userToken, login, logout }}>
+        <AuthContext.Provider value={{ userToken, userId, login, logout }}>
             {children}
         </AuthContext.Provider>
     );

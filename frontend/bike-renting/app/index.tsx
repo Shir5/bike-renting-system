@@ -13,9 +13,9 @@ import {
     KeyboardAvoidingView,
     Platform,
     Animated,
-    AppState, // Import AppState
+    AppState,
 } from 'react-native';
-import MapView, { Marker, MapViewProps } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { fetchStations, Station } from '../services/stationService';
@@ -26,20 +26,13 @@ import Modal from 'react-native-modal';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { fetchUserInfo } from '@/services/userService';
 import { addBalance } from '@/services/paymentService';
+import { createRental, updateRental } from '../services/rentalService';
 
 const { width, height } = Dimensions.get('window');
+const TARIFF_PER_MINUTE = 1.5; // For local UI display of spending
 
-// Define your tariff per minute (for example, 1.5 currency units per minute)
-const TARIFF_PER_MINUTE = 1.5;
-
-/**
- * AnimatedUpdateButton Component
- *
- * This button spins when pressed and calls the passed onPress callback.
- */
 const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
     const spinValue = useRef(new Animated.Value(0)).current;
-
     const spinAnimation = () => {
         spinValue.setValue(0);
         Animated.timing(spinValue, {
@@ -48,17 +41,14 @@ const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
             useNativeDriver: true,
         }).start();
     };
-
     const handlePress = () => {
         spinAnimation();
         onPress();
     };
-
     const spin = spinValue.interpolate({
         inputRange: [0, 1],
         outputRange: ['0deg', '360deg'],
     });
-
     return (
         <TouchableOpacity
             style={styles.updateButtonContainer}
@@ -77,8 +67,9 @@ const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
 };
 
 export default function HomeScreen() {
+    // Get token and user ID from AuthContext
+    const { userToken, userId } = useContext(AuthContext);
     const [isLoading, setIsLoading] = useState(true);
-    const { userToken } = useContext(AuthContext);
     const [menuOpen, setMenuOpen] = useState(false);
     const [stations, setStations] = useState<Station[]>([]);
     const [selectedStation, setSelectedStation] = useState<Station | null>(null);
@@ -91,33 +82,29 @@ export default function HomeScreen() {
     const [addAmount, setAddAmount] = useState<string>('');
     const truncatedBalance = userBalance.toString().slice(0, 6);
 
-    // --- Timer & Spending State ---
+    // Rental state for UI feedback
     const [isRented, setIsRented] = useState(false);
-    const [rentalTime, setRentalTime] = useState(0); // time in seconds
+    const [rentalTime, setRentalTime] = useState(0);
+    const [currentRentalId, setCurrentRentalId] = useState<number | null>(null);
 
-    // --- Geolocation State using expo-location ---
-    // Start with default coordinates; these will be updated by the location service.
+    // Geolocation state using expo-location
     const [userLocation, setUserLocation] = useState({
         latitude: 59.9343,
         longitude: 30.3351,
     });
-
-    // Create a ref for MapView so we can recenter it when location updates.
     const mapRef = useRef<MapView>(null);
 
-    // Helper function to format time as mm:ss
+    // Helper to format time (mm:ss)
     const formatTime = (timeInSeconds: number) => {
         const minutes = Math.floor(timeInSeconds / 60);
         const seconds = timeInSeconds % 60;
-        return `${minutes.toString().padStart(2, '0')}:${seconds
-            .toString()
-            .padStart(2, '0')}`;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
 
-    // Calculate the current spending based on elapsed time and tariff
+    // Calculate local spending (for UI display)
     const spentAmount = ((rentalTime / 60) * TARIFF_PER_MINUTE).toFixed(2);
 
-    // Timer effect: updates every second when a ride is active
+    // Start local timer when a rental is active
     useEffect(() => {
         let timerId: NodeJS.Timeout;
         if (isRented) {
@@ -130,18 +117,16 @@ export default function HomeScreen() {
         };
     }, [isRented]);
 
-    // Function to update the user's location and recenter the map
+    // Update location and recenter map
     const updateLocation = async () => {
-        let { status } = await Location.requestForegroundPermissionsAsync();
+        const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
             Alert.alert('Ошибка', 'Доступ к местоположению не предоставлен');
             return;
         }
-        let location = await Location.getCurrentPositionAsync({});
+        const location = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = location.coords;
         setUserLocation({ latitude, longitude });
-
-        // Animate the map to the new location
         if (mapRef.current) {
             mapRef.current.animateToRegion(
                 {
@@ -155,27 +140,23 @@ export default function HomeScreen() {
         }
     };
 
-    // Initially get the user location when the component mounts.
     useEffect(() => {
         updateLocation();
     }, []);
 
-    // Listen for app state changes to update the location when reentering the app.
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
             if (nextAppState === 'active') {
                 updateLocation();
             }
         });
-        return () => {
-            subscription.remove();
-        };
+        return () => subscription.remove();
     }, []);
 
-    // --- Data Loading Functions ---
+    // Load stations using the token from AuthContext
     const loadStations = async () => {
         try {
-            const stationData = await fetchStations(userToken);
+            const stationData = await fetchStations(userToken!);
             setStations(stationData);
         } catch (error: any) {
             Alert.alert('Ошибка', error.message || 'Не удалось загрузить станции.');
@@ -186,7 +167,6 @@ export default function HomeScreen() {
         const initialize = async () => {
             try {
                 if (!userToken) {
-                    console.warn('Токен отсутствует.');
                     Alert.alert('Ошибка', 'Токен отсутствует. Пожалуйста, войдите в систему.');
                     setIsLoading(false);
                     return;
@@ -195,7 +175,6 @@ export default function HomeScreen() {
                 if (userInfo) {
                     setUserBalance(userInfo.balance);
                 } else {
-                    console.warn('Не удалось получить данные пользователя.');
                     Alert.alert('Ошибка', 'Не удалось загрузить данные пользователя.');
                 }
             } catch (error) {
@@ -212,14 +191,13 @@ export default function HomeScreen() {
         loadStations();
     }, []);
 
-    // --- Map & Modal Functions ---
     const handleMarkerPress = async (station: Station) => {
         setSelectedStation(station);
         setIsModalVisible(true);
         setLoadingBicycles(true);
         setErrorBicycles(null);
         try {
-            const bicycleData = await fetchBicyclesByStationId(station.id, userToken);
+            const bicycleData = await fetchBicyclesByStationId(station.id, userToken!);
             setBicycles(bicycleData);
         } catch (error: any) {
             Alert.alert('Ошибка', error.message || 'Не удалось загрузить велосипеды.');
@@ -233,7 +211,7 @@ export default function HomeScreen() {
         setMenuOpen(!menuOpen);
     };
 
-    // --- Bicycle Renting ---
+    // Render a bicycle item. When "Арендовать" is pressed, we use the userToken and userId from AuthContext.
     const renderBicycleItem = ({ item }: { item: Bicycle }) => (
         <View style={styles.bicycleItem}>
             <Text style={styles.bicycleText}>Модель: {item.model}</Text>
@@ -241,34 +219,54 @@ export default function HomeScreen() {
             <Text style={styles.bicycleText}>Статус: {item.status}</Text>
             <TouchableOpacity
                 style={styles.rentButton}
-                onPress={() => handleRentBicycle(item.id)}
+                onPress={() => {
+                    if (!userToken || userId === null) {
+                        Alert.alert('Ошибка', 'Пользователь не авторизован.');
+                        return;
+                    }
+                    if (!selectedStation?.id) {
+                        Alert.alert('Ошибка', 'Не удалось определить станцию начала аренды.');
+                        return;
+                    }
+                    // Create a rental using the token and user ID from AuthContext.
+                    createRental(userToken, userId, item.id, selectedStation.id)
+                        .then((rentalData) => {
+                            setCurrentRentalId(rentalData.id);
+                            setIsRented(true);
+                            setRentalTime(0);
+                        })
+                        .catch((err) => {
+                            Alert.alert('Ошибка', err.message || 'Не удалось начать аренду.');
+                        });
+                }}
             >
                 <Text style={styles.rentButtonText}>Арендовать</Text>
             </TouchableOpacity>
         </View>
     );
 
-    // When a bicycle is rented, start the ride (timer & cost calculation)
-    const handleRentBicycle = async (bicycleId: number) => {
-        try {
-            // Replace this with your actual rental logic (e.g., API call)
-            Alert.alert('Успех', `Велосипед с ID ${bicycleId} успешно арендован!`);
-            setIsRented(true);
-            setRentalTime(0);
-        } catch (error: any) {
-            Alert.alert('Ошибка', error.message || 'Не удалось арендовать велосипед.');
-        }
-    };
-
-    // Stop the ride
+    // Stop the rental
     const handleStopRide = () => {
-        setIsRented(false);
-        Alert.alert('Аренда остановлена', `Итоговый расход: ${spentAmount} ₽`);
-        // Optionally, reset the timer:
-        // setRentalTime(0);
+        if (currentRentalId === null) {
+            Alert.alert('Ошибка', 'Аренда не найдена.');
+            return;
+        }
+        if (!selectedStation?.id) {
+            Alert.alert('Ошибка', 'Не удалось определить станцию завершения аренды.');
+            return;
+        }
+        updateRental(userToken!, currentRentalId, selectedStation.id)
+            .then((updatedRental) => {
+                Alert.alert('Аренда остановлена', `Итоговый расход: ${updatedRental.cost} ₽`);
+                setIsRented(false);
+                setRentalTime(0);
+                setCurrentRentalId(null);
+            })
+            .catch((err) => {
+                Alert.alert('Ошибка', err.message || 'Не удалось завершить аренду.');
+            });
     };
 
-    // --- Balance Top-Up ---
     const handleAddBalance = async () => {
         const amount = parseFloat(addAmount);
         if (isNaN(amount) || amount <= 0) {
@@ -287,6 +285,10 @@ export default function HomeScreen() {
             Alert.alert('Успех', `Баланс пополнен на ${amount} ₽`);
         } catch (error: any) {
             console.error('Ошибка при пополнении баланса:', error);
+            if (error.response) {
+                console.error('Response status:', error.response.status);
+                console.error('Response data:', error.response.data);
+            }
             const errorMessage =
                 error.response?.data?.message ||
                 (error.response?.status === 403
@@ -360,7 +362,7 @@ export default function HomeScreen() {
                 <View style={styles.infoContainer}>
                     <Text style={styles.infoHeader}>Статус аренды</Text>
                     <Text style={styles.infoText}>Время: {formatTime(rentalTime)}</Text>
-                    <Text style={styles.infoText}>Расход: {spentAmount} ₽</Text>
+                    <Text style={styles.infoText}>Локально (UI): {spentAmount} ₽</Text>
                     {isRented && (
                         <TouchableOpacity style={styles.stopButton} onPress={handleStopRide}>
                             <Text style={styles.stopButtonText}>Остановить аренду</Text>
