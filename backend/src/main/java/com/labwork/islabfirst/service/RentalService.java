@@ -98,11 +98,10 @@ public class RentalService {
 
 
 
-        bicycleRepository.save(bicycle);
-
         double costPerMinute = 6;  // Стоимость за минуту
         long durationInMinutes = calculateRentalDurationInMinutes(original.getRentalStartedAt(), updated.getRentalEndedAt());
 
+        bicycle.setMileage(bicycle.getMileage() + durationInMinutes);
         double totalCost = costPerMinute * durationInMinutes;
         updated.setCost(totalCost);
 
@@ -119,6 +118,8 @@ public class RentalService {
             // Если хватает средств на балансе, списываем стоимость поездки с баланса
             user.setBalance(user.getBalance() - (long) totalCost);
         }
+        bicycleRepository.save(bicycle);
+
 
         userRepository.save(user);  // Сохраняем изменения в пользователе
 

@@ -57,4 +57,8 @@ public class Bicycle {
     private Date lastServiceDate; //Поле не может быть null, Значение этого поля должно генерироваться автоматически
 
 
+    @Column(name = "mileage")
+    private Long mileage;
+
+
 }

@@ -41,16 +41,24 @@ public class Repair {
     @JoinColumn(name = "bicycle_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT))
     private Bicycle bicycle;
 
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "technician_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT))
+    private Technician technician;
+
+
 
     @NotNull
     @Column(name = "description", nullable = false)
     private String description;
 
 
+    @CreationTimestamp
     @Column(name = "repairStartedAt", updatable = false)
     private LocalDateTime repairStartedAt;
 
-    @Column(name = "repairEndedAt", updatable = false)
+    @UpdateTimestamp
+    @Column(name = "repairEndedAt")
     private LocalDateTime repairEndedAt; // Новое поле для времени окончания аренды
 
 

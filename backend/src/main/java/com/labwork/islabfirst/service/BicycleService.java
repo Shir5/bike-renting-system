@@ -46,6 +46,7 @@ public class BicycleService {
     public BicycleDto create(CreateBicycleRequest request) {
 
         var bicycle = bicycleMapper.toEntity(request);
+        bicycle.setMileage(0L);
         Station station = stationRepository.findById(request.station_id())
                 .orElseThrow(() -> new EntityNotFoundByIdException(Station.class, request.station_id()));
         bicycle.setStation(station);
