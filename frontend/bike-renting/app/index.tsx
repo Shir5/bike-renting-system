@@ -68,7 +68,7 @@ const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
 
 export default function HomeScreen() {
     // Get token and user ID from AuthContext
-    const { userToken, userId } = useContext(AuthContext);
+    const { userToken, user } = useContext(AuthContext);
     const [isLoading, setIsLoading] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const [stations, setStations] = useState<Station[]>([]);
@@ -81,6 +81,7 @@ export default function HomeScreen() {
     const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false);
     const [addAmount, setAddAmount] = useState<string>('');
     const truncatedBalance = userBalance.toString().slice(0, 6);
+    const [currentBicycleId, setCurrentBicycleId] = useState<number | null>(null);
 
     // Rental state for UI feedback
     const [isRented, setIsRented] = useState(false);
@@ -211,7 +212,7 @@ export default function HomeScreen() {
         setMenuOpen(!menuOpen);
     };
 
-    // Render a bicycle item. When "Арендовать" is pressed, we use the userToken and userId from AuthContext.
+    // Render a bicycle item. When "Арендовать" is pressed, we use the userToken and user from AuthContext.
     const renderBicycleItem = ({ item }: { item: Bicycle }) => (
         <View style={styles.bicycleItem}>
             <Text style={styles.bicycleText}>Модель: {item.model}</Text>
@@ -220,7 +221,7 @@ export default function HomeScreen() {
             <TouchableOpacity
                 style={styles.rentButton}
                 onPress={() => {
-                    if (!userToken || userId === null) {
+                    if (!userToken || user === null) {
                         Alert.alert('Ошибка', 'Пользователь не авторизован.');
                         return;
                     }
@@ -228,10 +229,10 @@ export default function HomeScreen() {
                         Alert.alert('Ошибка', 'Не удалось определить станцию начала аренды.');
                         return;
                     }
-                    // Create a rental using the token and user ID from AuthContext.
-                    createRental(userToken, userId, item.id, selectedStation.id)
+                    createRental(userToken, user, item.id, selectedStation.id)
                         .then((rentalData) => {
                             setCurrentRentalId(rentalData.id);
+                            setCurrentBicycleId(item.id);
                             setIsRented(true);
                             setRentalTime(0);
                         })
@@ -255,16 +256,26 @@ export default function HomeScreen() {
             Alert.alert('Ошибка', 'Не удалось определить станцию завершения аренды.');
             return;
         }
-        updateRental(userToken!, currentRentalId, selectedStation.id)
+        const calculatedCost = Math.round((rentalTime / 60) * TARIFF_PER_MINUTE);
+        updateRental(
+            userToken!,
+            currentRentalId!,
+            user!,           // передаём сам user, так как это идентификатор
+            currentBicycleId!, // идентификатор велосипеда
+            selectedStation.id, // id станции завершения
+            calculatedCost     // рассчитанная стоимость аренды
+        )
             .then((updatedRental) => {
                 Alert.alert('Аренда остановлена', `Итоговый расход: ${updatedRental.cost} ₽`);
                 setIsRented(false);
                 setRentalTime(0);
                 setCurrentRentalId(null);
+                setCurrentBicycleId(null);
             })
             .catch((err) => {
                 Alert.alert('Ошибка', err.message || 'Не удалось завершить аренду.');
             });
+
     };
 
     const handleAddBalance = async () => {

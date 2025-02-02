@@ -17,9 +17,9 @@ const API_BASE_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api'; // Replace
     startStationId: number
 ): Promise<any> {
     const requestBody = {
-        user_id: userId,
-        bicycle_id: bicycleId,
-        start_station_id: startStationId,
+        user: userId,
+        bicycle: bicycleId,
+        start_station: startStationId,
     };
 
     try {
@@ -60,12 +60,16 @@ const API_BASE_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api'; // Replace
 export async function updateRental(
     userToken: string,
     rentalId: number,
-    endStationId: number
+    userId: number,
+    bicycleId: number,
+    endStationId: number,
+    cost: number
 ): Promise<any> {
     const requestBody = {
-        end_station_id: endStationId,
-        // Optionally, include the bicycle id if required:
-        // bicycle_id: <bicycleId>,
+        user: userId,            // ключ "user" для user_id
+        bicycle: bicycleId,      // ключ "bicycle" для bicycle_id
+        end_station: endStationId, // ключ "end_station" для станции завершения
+        cost: cost               // итоговая стоимость аренды
     };
 
     try {

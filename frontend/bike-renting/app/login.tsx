@@ -32,7 +32,7 @@ export default function LoginScreen() {
             const jwtResponse = await loginUser({ username, password });
             if (jwtResponse) {
                 // Pass only the token string and the user id to the login function.
-                login(jwtResponse.access_token, jwtResponse.user_id);
+                login(jwtResponse.access_token, jwtResponse.user);
                 Alert.alert('Успех', 'Вход выполнен!');
                 router.replace('/'); // Navigate to the main page
             } else {

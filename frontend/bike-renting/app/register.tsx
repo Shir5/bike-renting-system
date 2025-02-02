@@ -26,7 +26,7 @@ export default function RegisterScreen() {
             const jwtResponse = await registerUser({ username, password });
             if (jwtResponse) {
                 // Call the login function from AuthContext with the token and user ID.
-                login(jwtResponse.access_token, jwtResponse.user_id);
+                login(jwtResponse.access_token, jwtResponse.user);
                 Alert.alert('Успех', 'Пользователь успешно зарегистрирован!');
                 router.replace('/'); // Navigate to the main screen
             } else {

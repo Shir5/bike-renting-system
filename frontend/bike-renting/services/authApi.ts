@@ -9,14 +9,14 @@ const api = axios.create({ baseURL: API_URL });
 // Тип ответа от сервера (JwtResponse)
 export type JwtResponse = {
     access_token: string;
-    user_id: number;
+    user: number;
     username: string;
 };
 
 /**
  * Регистрация
  * @param data объект вида { username, password }
- * Возвращает объект JwtResponse: { access_token, user_id, username }
+ * Возвращает объект JwtResponse: { access_token, user, username }
  */
 export async function registerUser(data: {
     username: string;
@@ -28,10 +28,10 @@ export async function registerUser(data: {
         console.log('Ответ сервера (регистрация):', res.data);
 
         // Проверяем, что сервер вернул access_token и user_id
-        if (res.data && res.data.access_token && res.data.user_id) {
+        if (res.data && res.data.access_token && res.data.user) {
             return res.data as JwtResponse;
         } else {
-            throw new Error('Сервер не вернул access_token или user_id.');
+            throw new Error('Сервер не вернул access_token или user.');
         }
     } catch (error: any) {
         console.error('Ошибка при регистрации:', error.message);
@@ -45,7 +45,7 @@ export async function registerUser(data: {
 /**
  * Логин
  * @param credentials объект вида { username, password }
- * Возвращает объект JwtResponse: { access_token, user_id, username }
+ * Возвращает объект JwtResponse: { access_token, user, username }
  */
 export async function loginUser(credentials: {
     username: string;
@@ -57,10 +57,10 @@ export async function loginUser(credentials: {
         console.log('Ответ сервера (логин):', res.data);
 
         // Проверяем, что сервер вернул access_token и user_id
-        if (res.data && res.data.access_token && res.data.user_id) {
+        if (res.data && res.data.access_token && res.data.user) {
             return res.data as JwtResponse;
         } else {
-            throw new Error('Сервер не вернул access_token или user_id.');
+            throw new Error('Сервер не вернул access_token или user.');
         }
     } catch (error: any) {
         console.error('Ошибка при авторизации:', error.message);
