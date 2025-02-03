@@ -70,6 +70,7 @@ const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
  * CustomQRScanner uses the basic Expo Camera snippet.
  * It shows the camera preview with a flip button and a close button.
  * When a QR code is scanned, it calls the onBarcodeScanned callback.
+ * In this updated version, after one scan the scanner immediately closes and shows an alert with the scanned data.
  */
 function CustomQRScanner({
     onClose,
@@ -80,8 +81,9 @@ function CustomQRScanner({
 }) {
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
+    const [scanned, setScanned] = useState(false);
 
-    // If permissions are still loading, render nothing
+    // If permissions are still loading, render nothing.
     if (!permission) {
         return <View />;
     }
@@ -102,17 +104,27 @@ function CustomQRScanner({
         setFacing((current) => (current === 'back' ? 'front' : 'back'));
     }
 
+    const handleScan = ({ data }: { data: string }) => {
+        if (!scanned) {
+            setScanned(true);
+            console.log('Scanned QR Code:', data);
+            // Call the provided callback.
+            onBarcodeScanned(data);
+            // Immediately close the scanner.
+            onClose();
+            // Show an alert with the scanned information.
+            Alert.alert("Scan Result", `Scanned Data: ${data}`);
+        }
+    };
+
     return (
         <View style={styles.scannerContainer}>
             {Platform.OS === 'ios' && <StatusBar hidden />}
             <CameraView
                 style={styles.scannerCamera}
                 facing={facing}
-                // onBarCodeScanned will be called when a QR code is detected.
-                onBarcodeScanned={({ data }: { data: string }) => {
-                    console.log('Scanned QR Code:', data);
-                    onBarcodeScanned(data);
-                }}
+                // Only call handleScan if not in "scanned" state.
+                onBarcodeScanned={scanned ? undefined : handleScan}
             >
                 <View style={styles.scannerButtonContainer}>
                     <TouchableOpacity style={styles.scannerButton} onPress={toggleCameraFacing}>
@@ -128,59 +140,62 @@ function CustomQRScanner({
 }
 
 export default function HomeScreen() {
-    // Get user context and token
+    // Get user context and token.
     const { userToken, user } = useContext(AuthContext);
 
-    // Screen states
+    // Screen states.
     const [isLoading, setIsLoading] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const [stations, setStations] = useState<Station[]>([]);
     const [selectedStation, setSelectedStation] = useState<Station | null>(null);
 
-    // Bicycle state
+    // Bicycle state.
     const [bicycles, setBicycles] = useState<Bicycle[]>([]);
     const [loadingBicycles, setLoadingBicycles] = useState(false);
     const [errorBicycles, setErrorBicycles] = useState<string | null>(null);
 
-    // Modal states
-    const [isModalVisible, setIsModalVisible] = useState(false); // Bicycle list modal
-    const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false); // Balance modal
-    const [isScannerVisible, setIsScannerVisible] = useState(false); // Custom QR scanner
+    // Modal states.
+    const [isModalVisible, setIsModalVisible] = useState(false); // Bicycle list modal.
+    const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false); // Balance modal.
+    const [isScannerVisible, setIsScannerVisible] = useState(false); // Custom QR scanner.
 
-    // Balance state
+    // Balance state.
     const [userBalance, setUserBalance] = useState<number>(100);
     const [addAmount, setAddAmount] = useState<string>('');
     const truncatedBalance = userBalance.toString().slice(0, 6);
 
-    // Rental state
+    // Rental state.
     const [currentBicycleId, setCurrentBicycleId] = useState<number | null>(null);
     const [isRented, setIsRented] = useState(false);
     const [rentalTime, setRentalTime] = useState(0);
     const [currentRentalId, setCurrentRentalId] = useState<number | null>(null);
 
-    // Geolocation
+    // Geolocation.
     const [userLocation, setUserLocation] = useState({ latitude: 59.9343, longitude: 30.3351 });
     const mapRef = useRef<MapView>(null);
 
-    // For QR scanning, store target bicycle and request camera permissions
+    // For QR scanning, store target bicycle.
     const [targetBicycle, setTargetBicycle] = useState<Bicycle | null>(null);
 
-    // (Optional) Log camera permissions
+    // For the scrollable modal.
+    const [scrollOffset, setScrollOffset] = useState(0);
+    const flatListRef = useRef<any>(null);
+
     useEffect(() => {
         console.log('HomeScreen - Camera permission status updated');
     }, []);
 
-    // Helper: format time
+    // Helper: format time.
     const formatTime = (timeInSeconds: number) => {
         const minutes = Math.floor(timeInSeconds / 60);
         const seconds = timeInSeconds % 60;
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
 
-    // Calculate spent amount for display
+    // Calculate spent amount for display.
     const spentAmount = ((rentalTime / 60) * TARIFF_PER_MINUTE).toFixed(2);
 
-    // Rental timer
+    // Rental timer.
     useEffect(() => {
         let timerId: NodeJS.Timeout;
         if (isRented) {
@@ -193,7 +208,7 @@ export default function HomeScreen() {
         };
     }, [isRented]);
 
-    // Get location
+    // Get location.
     const updateLocation = async () => {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
@@ -229,7 +244,7 @@ export default function HomeScreen() {
         return () => subscription.remove();
     }, []);
 
-    // Load stations
+    // Load stations.
     const loadStations = async () => {
         try {
             const stationData = await fetchStations(userToken!);
@@ -244,7 +259,7 @@ export default function HomeScreen() {
         loadStations();
     }, []);
 
-    // Initialization: get user info
+    // Initialization: get user info.
     useEffect(() => {
         const initialize = async () => {
             try {
@@ -312,9 +327,9 @@ export default function HomeScreen() {
                         Alert.alert('Ошибка', 'Не удалось определить станцию начала аренды.');
                         return;
                     }
-                    // Close the bicycle list modal
+                    // Close the bicycle list modal.
                     setIsModalVisible(false);
-                    // Set the target bicycle and open the custom QR scanner
+                    // Set the target bicycle and open the custom QR scanner.
                     setTargetBicycle(item);
                     setIsScannerVisible(true);
                 }}
@@ -402,6 +417,11 @@ export default function HomeScreen() {
         }
     };
 
+    // Handler for FlatList scrolling inside the modal.
+    const handleScroll = (event: any) => {
+        setScrollOffset(event.nativeEvent.contentOffset.y);
+    };
+
     if (isLoading) {
         return (
             <SafeAreaView style={styles.container}>
@@ -410,8 +430,6 @@ export default function HomeScreen() {
             </SafeAreaView>
         );
     }
-
-    console.log('HomeScreen rendered');
 
     return (
         <MenuDrawer menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
@@ -487,6 +505,14 @@ export default function HomeScreen() {
                     onSwipeComplete={() => setIsModalVisible(false)}
                     onBackdropPress={() => setIsModalVisible(false)}
                     swipeThreshold={100}
+                    // Pass the reference of the scrollable content.
+                    scrollTo={(node) => {
+                        flatListRef.current = node;
+                    }}
+                    scrollOffset={scrollOffset}
+                    // Adjust this value according to your content height.
+                    scrollOffsetMax={300}
+                    propagateSwipe={true}
                     style={styles.modal}
                 >
                     <SafeAreaView style={styles.limitedModalContainer}>
@@ -502,11 +528,14 @@ export default function HomeScreen() {
                             <Text style={styles.errorText}>{errorBicycles}</Text>
                         ) : (
                             <FlatList
+                                ref={flatListRef}
                                 data={bicycles}
                                 keyExtractor={(item) => item.id.toString()}
                                 renderItem={renderBicycleItem}
                                 contentContainerStyle={styles.bicycleList}
                                 ListEmptyComponent={<Text>Нет доступных велосипедов.</Text>}
+                                onScroll={handleScroll}
+                                scrollEventThrottle={16}
                             />
                         )}
                     </SafeAreaView>
@@ -531,7 +560,7 @@ export default function HomeScreen() {
                     </KeyboardAvoidingView>
                 </Modal>
 
-                {/* Custom QR Scanner (instead of the old QRScannerModal) */}
+                {/* Custom QR Scanner */}
                 {isScannerVisible && (
                     <View style={styles.scannerModalContainer}>
                         <CustomQRScanner
@@ -730,7 +759,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 10,
     },
-    // Styles for the custom QR scanner
+    // Styles for the custom QR scanner.
     scannerModalContainer: {
         position: 'absolute',
         top: 0,
@@ -781,4 +810,3 @@ const styles = StyleSheet.create({
         color: 'white',
     },
 });
-
