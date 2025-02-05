@@ -95,6 +95,7 @@ public class RentalService {
                 .orElseThrow(() -> new EntityNotFoundByIdException(Bicycle.class, id));
 
         bicycle.setStatus(BicycleStatus.AVAILABLE);
+        bicycle.setStation(end_station);
 
 
 

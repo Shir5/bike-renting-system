@@ -43,7 +43,7 @@ public class RentalMapperImpl implements RentalMapper {
         Long user_id = entity.getUser().getId() ;
         Long bicycle_id = entity.getBicycle().getId() ;
         Long start_station_id = entity.getStart_station().getId() ;
-        Long end_station_id = null;
+        Long end_station_id = (entity.getEnd_station() != null) ? entity.getEnd_station().getId() : null;
 
         RentalDto rentalDto = new RentalDto( id, user_id, bicycle_id, start_station_id, end_station_id, cost );
 
