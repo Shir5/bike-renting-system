@@ -72,6 +72,7 @@ const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
  * When a QR code is scanned, it calls the onBarcodeScanned callback.
  * In this updated version, after one scan the scanner immediately closes and shows an alert with the scanned data.
  */
+
 function CustomQRScanner({
     onClose,
     onBarcodeScanned,
@@ -81,9 +82,13 @@ function CustomQRScanner({
 }) {
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
-    const [scanned, setScanned] = useState(false);
+    const scannedRef = useRef(false); // Флаг для предотвращения многократных вызовов
 
-    // If permissions are still loading, render nothing.
+    // Сброс `scannedRef` при монтировании компонента
+    useEffect(() => {
+        scannedRef.current = false;
+    }, []);
+
     if (!permission) {
         return <View />;
     }
@@ -104,32 +109,39 @@ function CustomQRScanner({
         setFacing((current) => (current === 'back' ? 'front' : 'back'));
     }
 
+    // Обработчик QR-кода с блокировкой повторных вызовов
     const handleScan = ({ data }: { data: string }) => {
-        if (!scanned) {
-            setScanned(true);
-            console.log('Scanned QR Code:', data);
-            // Call the provided callback.
-            onBarcodeScanned(data);
-            // Immediately close the scanner.
-            onClose();
-            // Show an alert with the scanned information.
-            Alert.alert("Scan Result", `Scanned Data: ${data}`);
+        if (scannedRef.current) {
+            console.log('QR Scan ignored: already processing');
+            return;
         }
-    };
 
+        // Блокируем дальнейшие вызовы
+        scannedRef.current = true;
+        console.log(`QR Scanned: ${data}`);
+
+        try {
+            onBarcodeScanned(data);
+        } catch (error) {
+            console.error('Error handling QR scan:', error);
+        }
+
+        // Закрываем сканер с задержкой
+        setTimeout(() => {
+            onClose();
+            scannedRef.current = false; // Сброс блокировки после завершения
+        }, 500);
+    };
     return (
         <View style={styles.scannerContainer}>
             {Platform.OS === 'ios' && <StatusBar hidden />}
             <CameraView
                 style={styles.scannerCamera}
                 facing={facing}
-                // Only call handleScan if not in "scanned" state.
-                onBarcodeScanned={scanned ? undefined : handleScan}
+                // Only trigger scanning if not already scanned.
+                onBarcodeScanned={handleScan}
             >
                 <View style={styles.scannerButtonContainer}>
-                    <TouchableOpacity style={styles.scannerButton} onPress={toggleCameraFacing}>
-                        <Text style={styles.scannerText}>Flip Camera</Text>
-                    </TouchableOpacity>
                     <TouchableOpacity style={styles.scannerButton} onPress={onClose}>
                         <Text style={styles.scannerText}>Close</Text>
                     </TouchableOpacity>
@@ -176,6 +188,7 @@ export default function HomeScreen() {
 
     // For QR scanning, store target bicycle.
     const [targetBicycle, setTargetBicycle] = useState<Bicycle | null>(null);
+    const [isStopScannerVisible, setIsStopScannerVisible] = useState(false);
 
     // For the scrollable modal.
     const [scrollOffset, setScrollOffset] = useState(0);
@@ -312,6 +325,7 @@ export default function HomeScreen() {
     // set the target bicycle, and open the custom QR scanner.
     const renderBicycleItem = ({ item }: { item: Bicycle }) => (
         <View style={styles.bicycleItem}>
+            <Text style={styles.bicycleText}>ID: {item.id}</Text>
             <Text style={styles.bicycleText}>Модель: {item.model}</Text>
             <Text style={styles.bicycleText}>Тип: {item.type}</Text>
             <Text style={styles.bicycleText}>Статус: {item.status}</Text>
@@ -339,18 +353,22 @@ export default function HomeScreen() {
         </View>
     );
 
-    // Handle stopping the rental.
-    const handleStopRide = () => {
+    // When the user scans the QR code at the stop station, the data (assumed to be the station id)
+    // is parsed and used to update the rental and change the bicycle’s station.
+    const handleStopStationScanned = (data: string) => {
+        console.log('Stop station QR scanned with data:', data);
+        const stationId = parseInt(data, 10);
+        if (isNaN(stationId)) {
+            Alert.alert('Ошибка', 'QR код не соответствует идентификатору станции.');
+            return;
+        }
+        setIsStopScannerVisible(false);
         if (currentRentalId === null) {
             Alert.alert('Ошибка', 'Аренда не найдена.');
             return;
         }
-        if (!selectedStation?.id) {
-            Alert.alert('Ошибка', 'Не удалось определить станцию завершения аренды.');
-            return;
-        }
         const calculatedCost = Math.round((rentalTime / 60) * TARIFF_PER_MINUTE);
-        updateRental(userToken!, currentRentalId!, user!, currentBicycleId!, selectedStation.id, calculatedCost)
+        updateRental(userToken!, currentRentalId!, user!, currentBicycleId!, stationId, calculatedCost)
             .then((updatedRental) => {
                 Alert.alert('Аренда остановлена', `Итоговый расход: ${updatedRental.cost} ₽`);
                 setIsRented(false);
@@ -464,7 +482,7 @@ export default function HomeScreen() {
                             longitudeDelta: 0.05,
                         }}
                         showsUserLocation={true}
-                        followsUserLocation={true}
+                        followsUserLocation={false}
                         scrollEnabled={!menuOpen}
                         zoomEnabled={!menuOpen}
                     >
@@ -492,8 +510,11 @@ export default function HomeScreen() {
                     <Text style={styles.infoText}>Время: {formatTime(rentalTime)}</Text>
                     <Text style={styles.infoText}>Сумма: {spentAmount} ₽</Text>
                     {isRented && (
-                        <TouchableOpacity style={styles.stopButton} onPress={handleStopRide}>
-                            <Text style={styles.stopButtonText}>Остановить аренду</Text>
+                        <TouchableOpacity
+                            style={styles.stopButton}
+                            onPress={() => setIsStopScannerVisible(true)}
+                        >
+                            <Text style={styles.stopButtonText}>Сканировать для завершения аренды</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -545,7 +566,7 @@ export default function HomeScreen() {
                 <Modal
                     isVisible={isBalanceModalVisible}
                     onBackdropPress={() => setIsBalanceModalVisible(false)}
-                    style={styles.modal}
+                    style={styles.balanceModal}
                 >
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.balanceModalContainer}>
                         <Text style={styles.modalTitle}>Пополнить баланс</Text>
@@ -556,8 +577,10 @@ export default function HomeScreen() {
                             value={addAmount}
                             onChangeText={setAddAmount}
                         />
-                        <Button title="Пополнить" onPress={handleAddBalance} />
+                        <Button title="Пополнить" onPress={handleAddBalance}  />
+                        <View style={{ height: 10 }} />
                     </KeyboardAvoidingView>
+
                 </Modal>
 
                 {/* Custom QR Scanner */}
@@ -575,6 +598,22 @@ export default function HomeScreen() {
                         />
                     </View>
                 )}
+
+                {isStopScannerVisible && (
+                    <View style={styles.scannerModalContainer}>
+                        <CustomQRScanner
+                            onClose={() => {
+                                console.log('CustomQRScanner (stop) onClose called');
+                                setIsStopScannerVisible(false);
+                            }}
+                            onBarcodeScanned={(data) => {
+                                console.log('CustomQRScanner (stop) onBarcodeScanned called with data:', data);
+                                handleStopStationScanned(data);
+                            }}
+                        />
+                    </View>
+                )}
+
             </SafeAreaView>
         </MenuDrawer>
     );
@@ -584,6 +623,12 @@ const styles = StyleSheet.create({
     modal: {
         margin: 0,
         justifyContent: 'flex-end',
+    },
+    balanceModal: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: 0,
+        paddingBottom: height * 0.2,
     },
     limitedModalContainer: {
         height: height * 0.7,
@@ -691,6 +736,7 @@ const styles = StyleSheet.create({
     },
     bicycleText: {
         fontSize: 16,
+        color: '#fff'
     },
     errorText: {
         color: 'red',
@@ -714,18 +760,23 @@ const styles = StyleSheet.create({
         bottom: 25,
     },
     balanceModalContainer: {
-        backgroundColor: '#fff',
+        backgroundColor: '#333',
         borderRadius: 10,
-        padding: 20,
+        padding: 30,
         alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
     },
     input: {
         borderWidth: 1,
         borderColor: '#ccc',
         borderRadius: 5,
-        width: '80%',
+        width: '100%',
         padding: 10,
+        paddingLeft: 20,
+        paddingRight: 20,
         marginVertical: 10,
+        color: '#fff'
     },
     rentButton: {
         marginTop: 10,
@@ -736,7 +787,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     rentButtonText: {
-        color: '#000000',
+        color: '#333',
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -783,12 +834,13 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scannerButtonContainer: {
-        flex: 1,
-        flexDirection: 'row',
+        position: 'absolute',
+        bottom: 80,      // Adjust as needed
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: 'transparent',
-        margin: 64,
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
     },
     scannerButton: {
         backgroundColor: 'rgba(0,0,0,0.5)',

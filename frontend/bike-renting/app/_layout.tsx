@@ -50,6 +50,11 @@ export default function RootLayout() {
             gestureEnabled: false, // Отключаем свайп
           }} />
 
+          <Stack.Screen name="admin" options={{
+            headerShown: false,
+            gestureEnabled: false, // Отключаем свайп
+          }} />
+
         </Stack>
 
         {/* Стандартный статус-бар (iOS/Android) */}

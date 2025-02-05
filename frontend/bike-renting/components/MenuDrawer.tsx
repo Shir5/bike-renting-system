@@ -10,11 +10,13 @@ import {
     PanResponder,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext'; // Adjust the path as needed
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 // Maximum menu width (70% of screen width)
 const MAX_MENU_WIDTH = width * 0.7;
-
 interface MenuDrawerProps {
     children: ReactNode;              // Main content wrapped by the Drawer
     menuOpen: boolean;                // Whether the menu is open (from HomeScreen)
@@ -28,6 +30,7 @@ export default function MenuDrawer({
 }: MenuDrawerProps) {
     const { logout } = useContext(AuthContext); // Get logout function from AuthContext
     const [animation] = useState(new Animated.Value(menuOpen ? 1 : 0));
+    const [isAdminMode, setIsAdminMode] = useState(false);
 
     useEffect(() => {
         Animated.timing(animation, {
@@ -37,6 +40,23 @@ export default function MenuDrawer({
             useNativeDriver: false,
         }).start();
     }, [menuOpen]);
+
+    useEffect(() => {
+        // Check admin mode on app startup
+        const checkAdminMode = async () => {
+            try {
+                const storedMode = await AsyncStorage.getItem('isAdminMode');
+                if (storedMode === 'true') {
+                    setIsAdminMode(true);
+                }
+            } catch (error) {
+                console.error("Ошибка при загрузке состояния режима администратора:", error);
+            }
+        };
+
+        checkAdminMode();
+    }, []);
+
 
     // Interpolate translateX based on animation value
     const translateX = animation.interpolate({
@@ -92,21 +112,60 @@ export default function MenuDrawer({
         });
     };
 
+    const handleAdminModeRedirect = async () => {
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+
+            if (!token) {
+                console.error("Токен отсутствует!");
+                return;
+            }
+
+            if (isAdminMode) {
+                // Switch back to user mode
+                setIsAdminMode(false);
+                await AsyncStorage.setItem('isAdminMode', 'false'); // Save state
+                router.push('/'); // Change this to your user home page
+                return;
+            }
+
+            const response = await axios.get(
+                'http://178.69.216.14:24120/islabFirst-0.1/api/admin-requests/role',
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            console.log(response.data);
+
+            if (response.data.role === 'ROLE_ADMIN') {
+                setIsAdminMode(true);
+                await AsyncStorage.setItem('isAdminMode', 'true'); // Save state
+                router.push('/admin');
+            } else {
+                console.error("Недостаточно прав");
+            }
+        } catch (error) {
+            console.error("Ошибка при запросе в админ-режим:", error);
+        }
+    };
+
     return (
         <View style={{ flex: 1 }} {...panResponder.panHandlers}>
             {children}
 
             <Animated.View style={[styles.drawerContainer, { transform: [{ translateX }] }]}>
                 <Text style={styles.menuTitle}>Меню</Text>
-
                 <TouchableOpacity onPress={handleCloseMenu} style={styles.menuItem}>
                     <Text>Опция 1</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleCloseMenu} style={styles.menuItem}>
                     <Text>Опция 2</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleCloseMenu} style={styles.menuItem}>
-                    <Text>Опция 3</Text>
+                <TouchableOpacity onPress={handleAdminModeRedirect} style={styles.menuItem}>
+                    <Text>{isAdminMode ? 'User mode' : 'Admin mode'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleExit} style={styles.exitButton}>
                     <Text style={styles.exitButtonText}>Выход</Text>
