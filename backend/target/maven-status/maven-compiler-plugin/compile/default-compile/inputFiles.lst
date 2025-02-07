@@ -74,6 +74,7 @@
 /home/extrzz/stuff/stud/IS/coursework/bike-renting-system/backend/src/main/java/com/labwork/islabfirst/mapper/RentalMapper.java
 /home/extrzz/stuff/stud/IS/coursework/bike-renting-system/backend/src/main/java/com/labwork/islabfirst/mapper/RentalMapperImpl.java
 /home/extrzz/stuff/stud/IS/coursework/bike-renting-system/backend/src/main/java/com/labwork/islabfirst/mapper/RepairMapper.java
+/home/extrzz/stuff/stud/IS/coursework/bike-renting-system/backend/src/main/java/com/labwork/islabfirst/mapper/RepairMapperImpl.java
 /home/extrzz/stuff/stud/IS/coursework/bike-renting-system/backend/src/main/java/com/labwork/islabfirst/mapper/StationMapper.java
 /home/extrzz/stuff/stud/IS/coursework/bike-renting-system/backend/src/main/java/com/labwork/islabfirst/mapper/TechnicianMapper.java
 /home/extrzz/stuff/stud/IS/coursework/bike-renting-system/backend/src/main/java/com/labwork/islabfirst/mapper/UserMapper.java

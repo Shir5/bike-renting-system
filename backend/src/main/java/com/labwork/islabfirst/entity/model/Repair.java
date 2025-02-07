@@ -64,7 +64,6 @@ public class Repair {
 
 
     @NotNull
-    @NotEmpty
     @Enumerated(EnumType.STRING)
     @Column(name="status", nullable = false)
     private RepairStatus status; //Поле не может быть null, Строка не может быть пустой
