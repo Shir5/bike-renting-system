@@ -57,5 +57,13 @@ public class BicycleService {
 //        messagingTemplate.convertAndSend("/topic/newPerson", personMapper.toDto(saved));
         return bicycleMapper.toDto(saved);
     }
+
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void delete(Long id) {
+        Bicycle bicycle = bicycleRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundByIdException(Bicycle.class, id));
+        bicycle.setStation(null);
+        bicycleRepository.deleteById(id);
+    }
 }
 

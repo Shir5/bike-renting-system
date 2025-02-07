@@ -44,4 +44,10 @@ public class StationController {
     ) {
         return ResponseEntity.ok(bicycleService.findAllByStationId(id, pageable));
     }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<StationDto> delete(@PathVariable Long id) {
+        stationService.delete(id);
+        return ResponseEntity.ok().build();
+
+    }
 }

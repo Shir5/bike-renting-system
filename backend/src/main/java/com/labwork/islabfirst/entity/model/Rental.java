@@ -40,20 +40,20 @@ public class Rental {
     private User user;
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     @JoinColumn(name = "bicycle_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT))
     private Bicycle bicycle;
 
 
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY,  cascade = CascadeType.REMOVE)
     @JoinColumn(name = "start_station_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT))
     private Station start_station;
 
 
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY,  cascade = CascadeType.REMOVE)
     @JoinColumn(name = "end_station_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT))
     private Station end_station;
 

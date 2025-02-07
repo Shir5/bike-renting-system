@@ -52,15 +52,20 @@ public class RepairService {
         var repair = repairMapper.toEntity(request);
 
 
-        var bicycle_id = repair.getBicycle().getId();
+        var bicycle_id = request.bicycle_id();
 
         var bicycle = bicycleRepository.findById(bicycle_id)
                 .orElseThrow(() -> new EntityNotFoundByIdException(Bicycle.class,bicycle_id));
 
-        var technician_id = repair.getTechnician().getId();
+        repair.setBicycle(bicycle);
+
+        if(!(repair.getBicycle().getStatus() == BicycleStatus.AVAILABLE)){
+            throw new IllegalStateException("bicycle is OCCUPIED");
+        }
+        var technician_id = request.technician_id();
         var technician = technicianRepository.findById(technician_id)
                 .orElseThrow(() -> new EntityNotFoundByIdException(Technician.class,technician_id));
-
+        repair.setTechnician(technician);
 
 
         bicycle.setStatus(BicycleStatus.UNAVAILABLE);

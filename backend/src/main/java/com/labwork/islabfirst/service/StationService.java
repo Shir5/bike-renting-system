@@ -3,6 +3,9 @@ package com.labwork.islabfirst.service;
 
 import com.labwork.islabfirst.dto.StationDto;
 import com.labwork.islabfirst.dto.request.*;
+import com.labwork.islabfirst.entity.model.Bicycle;
+import com.labwork.islabfirst.entity.model.Station;
+import com.labwork.islabfirst.handler.EntityNotFoundByIdException;
 import com.labwork.islabfirst.mapper.StationMapper;
 import com.labwork.islabfirst.repository.*;
 
@@ -42,5 +45,11 @@ public class StationService {
 
 //        messagingTemplate.convertAndSend("/topic/newPerson", personMapper.toDto(saved));
         return stationMapper.toDto(saved);
+    }
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void delete(Long id) {
+        Station station = stationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundByIdException(Station.class, id));
+        stationRepository.deleteById(id);
     }
 }

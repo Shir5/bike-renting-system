@@ -47,15 +47,14 @@ public class RentalService {
         if (user.getBalance() == 0 || user.getDebt() != 0) {
             throw new IllegalStateException("User cannot rent a bicycle with zero balance or non-zero debt.");
         }
-        rental.setUser(user);
 
         rental.setUser(user);
         Bicycle bicycle = bicycleRepository.findById(request.bicycle_id())
                 .orElseThrow(() -> new EntityNotFoundByIdException(Bicycle.class, request.bicycle_id()));
 
         // Добавляем проверку статуса велосипеда
-        if (bicycle.getStatus() == BicycleStatus.RENTED) {
-            throw new IllegalStateException("This bicycle is already rented and cannot be taken again.");
+        if (bicycle.getStatus() == BicycleStatus.RENTED || bicycle.getStatus() == BicycleStatus.UNAVAILABLE) {
+            throw new IllegalStateException("This bicycle is already rented or at maintenance and cannot be taken again.");
         }
         rental.setBicycle(bicycle);
 
