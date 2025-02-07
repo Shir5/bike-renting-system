@@ -62,6 +62,7 @@ public class BicycleService {
     public void delete(Long id) {
         Bicycle bicycle = bicycleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundByIdException(Bicycle.class, id));
+        bicycle.setStation(null);
         bicycleRepository.deleteById(id);
     }
 }

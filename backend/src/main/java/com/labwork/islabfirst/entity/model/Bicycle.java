@@ -19,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "bicycle")
@@ -59,6 +60,9 @@ public class Bicycle {
 
     @Column(name = "mileage")
     private Long mileage;
+
+    @OneToMany(mappedBy = "bicycle", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Repair> repairs;
 
 
 }

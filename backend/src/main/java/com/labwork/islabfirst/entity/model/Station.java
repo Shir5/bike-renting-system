@@ -20,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "station")
@@ -47,6 +48,7 @@ public class Station {
     private Long availableBicycles;
 
 
-
+    @OneToMany(mappedBy = "station", cascade = CascadeType.REMOVE)
+    private List<Bicycle> bicycles;
 
 }

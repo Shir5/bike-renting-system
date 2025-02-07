@@ -38,12 +38,11 @@ public class Repair {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bicycle_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT))
+    @JoinColumn(name = "bicycle_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT), nullable = true)
     private Bicycle bicycle;
 
-    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "technician_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT))
+    @JoinColumn(name = "technician_id", foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT), nullable = true)
     private Technician technician;
 
 
