@@ -3,14 +3,18 @@ import {
     View,
     Text,
     TextInput,
-    Button,
     Alert,
     StyleSheet,
-    ActivityIndicator
+    ActivityIndicator,
+    Dimensions,
+    TouchableOpacity
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { loginUser } from '../services/authApi';
 import { AuthContext } from '../context/AuthContext';
+
+// Pull width/height for dimension-based styling
+const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -28,10 +32,8 @@ export default function LoginScreen() {
 
         setLoading(true);
         try {
-            // Call loginUser and expect a JwtResponse object.
             const jwtResponse = await loginUser({ username, password });
             if (jwtResponse) {
-                // Pass only the token string and the user id to the login function.
                 login(jwtResponse.access_token, jwtResponse.user);
                 Alert.alert('Успех', 'Вход выполнен!');
                 router.replace('/'); // Navigate to the main page
@@ -56,6 +58,7 @@ export default function LoginScreen() {
             <TextInput
                 style={styles.input}
                 placeholder="Имя пользователя"
+                placeholderTextColor="#333"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -64,6 +67,7 @@ export default function LoginScreen() {
             <TextInput
                 style={styles.input}
                 placeholder="Пароль"
+                placeholderTextColor="#333"
                 value={password}
                 secureTextEntry
                 onChangeText={setPassword}
@@ -75,8 +79,21 @@ export default function LoginScreen() {
                 <ActivityIndicator size="large" color="#0000ff" />
             ) : (
                 <>
-                    <Button title="Войти" onPress={handleLogin} />
-                    <Button title="Регистрация" onPress={() => router.push('/register')} />
+                    <TouchableOpacity
+                        style={styles.loginButton}
+                        onPress={handleLogin}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.loginButtonText}>Войти</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.registerButton}
+                        onPress={() => router.push('/register')}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.registerButtonText}>Регистрация</Text>
+                    </TouchableOpacity>
                 </>
             )}
         </View>
@@ -86,23 +103,49 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
+        backgroundColor: '#333',
+        paddingHorizontal: width * 0.05,
         justifyContent: 'center',
-        backgroundColor: '#282c34'
     },
     title: {
-        fontSize: 24,
+        fontSize: width * 0.07,
         marginBottom: 16,
         textAlign: 'center',
-        color: 'white'
+        color: '#F29F58',
+        fontWeight: 'bold',
     },
     input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        marginBottom: 12,
+        backgroundColor: '#F29F58',
+        color: '#333',
         borderRadius: 5,
-        padding: 10,
-        backgroundColor: 'white',
-        color: 'black',
+        marginBottom: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        fontSize: 16,
+    },
+    loginButton: {
+        backgroundColor: '#F29F58',
+        paddingVertical: 12,
+        marginVertical: 12,
+        borderRadius: 5,
+        alignItems: 'center',
+    },
+    loginButtonText: {
+        color: '#333',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    registerButton: {
+        marginTop: 12,
+        paddingVertical: 12,
+        borderRadius: 5,
+        alignItems: 'center',
+        borderColor: '#F29F58', // Outline border
+        borderWidth: 2,
+    },
+    registerButtonText: {
+        color: '#F29F58',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 });

@@ -30,6 +30,7 @@ import MenuDrawer from '../components/MenuDrawer';
 import { fetchUserInfo } from '@/services/userService';
 import { addBalance } from '@/services/paymentService';
 import { createRental, updateRental } from '../services/rentalService';
+import { router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 const TARIFF_PER_MINUTE = 1.5;
@@ -66,13 +67,6 @@ const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
     );
 };
 
-/**
- * CustomQRScanner uses the basic Expo Camera snippet.
- * It shows the camera preview with a flip button and a close button.
- * When a QR code is scanned, it calls the onBarcodeScanned callback.
- * In this updated version, after one scan the scanner immediately closes and shows an alert with the scanned data.
- */
-
 function CustomQRScanner({
     onClose,
     onBarcodeScanned,
@@ -82,9 +76,8 @@ function CustomQRScanner({
 }) {
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
-    const scannedRef = useRef(false); // Флаг для предотвращения многократных вызовов
+    const scannedRef = useRef(false);
 
-    // Сброс `scannedRef` при монтировании компонента
     useEffect(() => {
         scannedRef.current = false;
     }, []);
@@ -109,14 +102,12 @@ function CustomQRScanner({
         setFacing((current) => (current === 'back' ? 'front' : 'back'));
     }
 
-    // Обработчик QR-кода с блокировкой повторных вызовов
     const handleScan = ({ data }: { data: string }) => {
         if (scannedRef.current) {
             console.log('QR Scan ignored: already processing');
             return;
         }
 
-        // Блокируем дальнейшие вызовы
         scannedRef.current = true;
         console.log(`QR Scanned: ${data}`);
 
@@ -126,19 +117,18 @@ function CustomQRScanner({
             console.error('Error handling QR scan:', error);
         }
 
-        // Закрываем сканер с задержкой
         setTimeout(() => {
             onClose();
-            scannedRef.current = false; // Сброс блокировки после завершения
+            scannedRef.current = false;
         }, 500);
     };
+
     return (
         <View style={styles.scannerContainer}>
             {Platform.OS === 'ios' && <StatusBar hidden />}
             <CameraView
                 style={styles.scannerCamera}
                 facing={facing}
-                // Only trigger scanning if not already scanned.
                 onBarcodeScanned={handleScan}
             >
                 <View style={styles.scannerButtonContainer}>
@@ -152,63 +142,57 @@ function CustomQRScanner({
 }
 
 export default function HomeScreen() {
-    // Get user context and token.
     const { userToken, user } = useContext(AuthContext);
 
-    // Screen states.
     const [isLoading, setIsLoading] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const [stations, setStations] = useState<Station[]>([]);
     const [selectedStation, setSelectedStation] = useState<Station | null>(null);
 
-    // Bicycle state.
     const [bicycles, setBicycles] = useState<Bicycle[]>([]);
     const [loadingBicycles, setLoadingBicycles] = useState(false);
     const [errorBicycles, setErrorBicycles] = useState<string | null>(null);
 
-    // Modal states.
-    const [isModalVisible, setIsModalVisible] = useState(false); // Bicycle list modal.
-    const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false); // Balance modal.
-    const [isScannerVisible, setIsScannerVisible] = useState(false); // Custom QR scanner.
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false);
+    const [isScannerVisible, setIsScannerVisible] = useState(false);
 
-    // Balance state.
     const [userBalance, setUserBalance] = useState<number>(100);
     const [addAmount, setAddAmount] = useState<string>('');
     const truncatedBalance = userBalance.toString().slice(0, 6);
 
-    // Rental state.
     const [currentBicycleId, setCurrentBicycleId] = useState<number | null>(null);
     const [isRented, setIsRented] = useState(false);
     const [rentalTime, setRentalTime] = useState(0);
     const [currentRentalId, setCurrentRentalId] = useState<number | null>(null);
 
-    // Geolocation.
     const [userLocation, setUserLocation] = useState({ latitude: 59.9343, longitude: 30.3351 });
     const mapRef = useRef<MapView>(null);
 
-    // For QR scanning, store target bicycle.
     const [targetBicycle, setTargetBicycle] = useState<Bicycle | null>(null);
     const [isStopScannerVisible, setIsStopScannerVisible] = useState(false);
 
-    // For the scrollable modal.
     const [scrollOffset, setScrollOffset] = useState(0);
     const flatListRef = useRef<any>(null);
 
+    // ADDED: If userToken is not found, redirect to Login immediately.
     useEffect(() => {
-        console.log('HomeScreen - Camera permission status updated');
-    }, []);
+        if (!userToken) {
+            setTimeout(() => {
+                router.push('/login');
+            }, 0);
+        }
+    }, [userToken]);
 
-    // Helper: format time.
+
     const formatTime = (timeInSeconds: number) => {
         const minutes = Math.floor(timeInSeconds / 60);
         const seconds = timeInSeconds % 60;
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
 
-    // Calculate spent amount for display.
     const spentAmount = ((rentalTime / 60) * TARIFF_PER_MINUTE).toFixed(2);
 
-    // Rental timer.
     useEffect(() => {
         let timerId: NodeJS.Timeout;
         if (isRented) {
@@ -221,7 +205,6 @@ export default function HomeScreen() {
         };
     }, [isRented]);
 
-    // Get location.
     const updateLocation = async () => {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
@@ -257,7 +240,6 @@ export default function HomeScreen() {
         return () => subscription.remove();
     }, []);
 
-    // Load stations.
     const loadStations = async () => {
         try {
             const stationData = await fetchStations(userToken!);
@@ -269,15 +251,17 @@ export default function HomeScreen() {
     };
 
     useEffect(() => {
-        loadStations();
-    }, []);
+        // Only fetch stations if token is present
+        if (userToken) {
+            loadStations();
+        }
+    }, [userToken]);
 
-    // Initialization: get user info.
     useEffect(() => {
         const initialize = async () => {
             try {
                 if (!userToken) {
-                    Alert.alert('Ошибка', 'Токен отсутствует. Пожалуйста, войдите в систему.');
+                    // We already handle redirect above, just return
                     setIsLoading(false);
                     return;
                 }
@@ -298,7 +282,6 @@ export default function HomeScreen() {
         initialize();
     }, [userToken]);
 
-    // When a station marker is pressed, load bicycles and show the modal.
     const handleMarkerPress = async (station: Station) => {
         setSelectedStation(station);
         setIsModalVisible(true);
@@ -306,7 +289,8 @@ export default function HomeScreen() {
         setErrorBicycles(null);
         try {
             const bicycleData = await fetchBicyclesByStationId(station.id, userToken!);
-            setBicycles(bicycleData);
+            const filtered = bicycleData.filter((bike) => bike.status === 'AVAILABLE');
+            setBicycles(filtered);
             console.log('Bicycles loaded for station', station.name, ':', bicycleData);
         } catch (error: any) {
             Alert.alert('Ошибка', error.message || 'Не удалось загрузить велосипеды.');
@@ -320,9 +304,6 @@ export default function HomeScreen() {
         setMenuOpen(!menuOpen);
     };
 
-    // Render a single bicycle item.
-    // When "Арендовать" is pressed, close the bicycle list modal,
-    // set the target bicycle, and open the custom QR scanner.
     const renderBicycleItem = ({ item }: { item: Bicycle }) => (
         <View style={styles.bicycleItem}>
             <Text style={styles.bicycleText}>ID: {item.id}</Text>
@@ -341,9 +322,7 @@ export default function HomeScreen() {
                         Alert.alert('Ошибка', 'Не удалось определить станцию начала аренды.');
                         return;
                     }
-                    // Close the bicycle list modal.
                     setIsModalVisible(false);
-                    // Set the target bicycle and open the custom QR scanner.
                     setTargetBicycle(item);
                     setIsScannerVisible(true);
                 }}
@@ -353,8 +332,6 @@ export default function HomeScreen() {
         </View>
     );
 
-    // When the user scans the QR code at the stop station, the data (assumed to be the station id)
-    // is parsed and used to update the rental and change the bicycle’s station.
     const handleStopStationScanned = (data: string) => {
         console.log('Stop station QR scanned with data:', data);
         const stationId = parseInt(data, 10);
@@ -381,7 +358,6 @@ export default function HomeScreen() {
             });
     };
 
-    // Handle balance top-up.
     const handleAddBalance = async () => {
         const amount = parseFloat(addAmount);
         if (isNaN(amount) || amount <= 0) {
@@ -409,8 +385,6 @@ export default function HomeScreen() {
         }
     };
 
-    // Handler for the custom QR scanner.
-    // When a QR code is scanned, if the data matches the target bicycle's id, create the rental.
     const handleBarcodeScanned = (data: string) => {
         console.log('handleBarcodeScanned called with data:', data);
         if (targetBicycle && data === targetBicycle.id.toString()) {
@@ -435,7 +409,6 @@ export default function HomeScreen() {
         }
     };
 
-    // Handler for FlatList scrolling inside the modal.
     const handleScroll = (event: any) => {
         setScrollOffset(event.nativeEvent.contentOffset.y);
     };
@@ -452,7 +425,6 @@ export default function HomeScreen() {
     return (
         <MenuDrawer menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
             <SafeAreaView style={styles.container}>
-                {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.burgerMenuPlaceholder}>
                         <TouchableOpacity onPress={toggleMenu}>
@@ -462,7 +434,6 @@ export default function HomeScreen() {
                     <Text style={styles.title}>HealthyRide</Text>
                 </View>
 
-                {/* Balance */}
                 <View style={styles.balanceContainer}>
                     <TouchableOpacity onPress={() => setIsBalanceModalVisible(true)}>
                         <Icon name="credit-card" size={24} color="#333" />
@@ -470,7 +441,6 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Map with update button */}
                 <View style={styles.mapContainer}>
                     <MapView
                         ref={mapRef}
@@ -504,7 +474,6 @@ export default function HomeScreen() {
                     </MapView>
                 </View>
 
-                {/* Rental status */}
                 <View style={styles.infoContainer}>
                     <Text style={styles.infoHeader}>Статус аренды</Text>
                     <Text style={styles.infoText}>Время: {formatTime(rentalTime)}</Text>
@@ -519,26 +488,25 @@ export default function HomeScreen() {
                     )}
                 </View>
 
-                {/* Modal: Bicycle list */}
                 <Modal
                     isVisible={isModalVisible}
                     swipeDirection={['down']}
                     onSwipeComplete={() => setIsModalVisible(false)}
                     onBackdropPress={() => setIsModalVisible(false)}
                     swipeThreshold={100}
-                    // Pass the reference of the scrollable content.
                     scrollTo={(node) => {
                         flatListRef.current = node;
                     }}
                     scrollOffset={scrollOffset}
-                    // Adjust this value according to your content height.
                     scrollOffsetMax={300}
                     propagateSwipe={true}
                     style={styles.modal}
                 >
                     <SafeAreaView style={styles.limitedModalContainer}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Велосипеды на станции: {selectedStation?.name}</Text>
+                            <Text style={styles.modalTitle}>
+                                Велосипеды на станции: {selectedStation?.name}
+                            </Text>
                             <TouchableOpacity onPress={() => setIsModalVisible(false)}>
                                 <Text style={styles.closeButton}>×</Text>
                             </TouchableOpacity>
@@ -562,13 +530,15 @@ export default function HomeScreen() {
                     </SafeAreaView>
                 </Modal>
 
-                {/* Modal: Balance top-up */}
                 <Modal
                     isVisible={isBalanceModalVisible}
                     onBackdropPress={() => setIsBalanceModalVisible(false)}
                     style={styles.balanceModal}
                 >
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.balanceModalContainer}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.balanceModalContainer}
+                    >
                         <Text style={styles.modalTitle}>Пополнить баланс</Text>
                         <TextInput
                             style={styles.input}
@@ -577,13 +547,11 @@ export default function HomeScreen() {
                             value={addAmount}
                             onChangeText={setAddAmount}
                         />
-                        <Button title="Пополнить" onPress={handleAddBalance}  />
+                        <Button title="Пополнить" onPress={handleAddBalance} />
                         <View style={{ height: 10 }} />
                     </KeyboardAvoidingView>
-
                 </Modal>
 
-                {/* Custom QR Scanner */}
                 {isScannerVisible && (
                     <View style={styles.scannerModalContainer}>
                         <CustomQRScanner
@@ -607,13 +575,15 @@ export default function HomeScreen() {
                                 setIsStopScannerVisible(false);
                             }}
                             onBarcodeScanned={(data) => {
-                                console.log('CustomQRScanner (stop) onBarcodeScanned called with data:', data);
+                                console.log(
+                                    'CustomQRScanner (stop) onBarcodeScanned called with data:',
+                                    data
+                                );
                                 handleStopStationScanned(data);
                             }}
                         />
                     </View>
                 )}
-
             </SafeAreaView>
         </MenuDrawer>
     );
@@ -720,11 +690,11 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#fff',
+        color: '#333',
     },
     closeButton: {
         fontSize: 24,
-        color: '#ffffff',
+        color: '#333',
     },
     bicycleList: {
         paddingBottom: 20,
@@ -736,7 +706,7 @@ const styles = StyleSheet.create({
     },
     bicycleText: {
         fontSize: 16,
-        color: '#fff'
+        color: '#333'
     },
     errorText: {
         color: 'red',

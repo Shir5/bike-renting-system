@@ -2,6 +2,7 @@
 import axios from 'axios';
 
 export interface Bicycle {
+    repairId: any;
     id: number;
     model: string;
     type: string; // Enum `Color` как строка

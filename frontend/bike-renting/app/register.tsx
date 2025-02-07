@@ -1,8 +1,19 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    Alert,
+    StyleSheet,
+    Dimensions,
+    TouchableOpacity,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { registerUser } from '../services/authApi';
 import { AuthContext } from '../context/AuthContext';
+
+// Pull width/height for dimension-based styling
+const { width } = Dimensions.get('window');
 
 export default function RegisterScreen() {
     const router = useRouter();
@@ -22,10 +33,10 @@ export default function RegisterScreen() {
         }
 
         try {
-            // Call the registerUser API function and get a JwtResponse object.
+            // Call the registerUser API function and get a JwtResponse object
             const jwtResponse = await registerUser({ username, password });
             if (jwtResponse) {
-                // Call the login function from AuthContext with the token and user ID.
+                // Store the token and user in AuthContext
                 login(jwtResponse.access_token, jwtResponse.user);
                 Alert.alert('Успех', 'Пользователь успешно зарегистрирован!');
                 router.replace('/'); // Navigate to the main screen
@@ -48,6 +59,7 @@ export default function RegisterScreen() {
             <TextInput
                 style={styles.input}
                 placeholder="Имя пользователя"
+                placeholderTextColor="#333"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -55,14 +67,28 @@ export default function RegisterScreen() {
             <TextInput
                 style={styles.input}
                 placeholder="Пароль (>= 4 символа)"
+                placeholderTextColor="#333"
                 value={password}
                 secureTextEntry
                 onChangeText={setPassword}
                 autoCapitalize="none"
             />
 
-            <Button title="Зарегистрироваться" onPress={handleRegister} />
-            <Button title="Уже есть аккаунт?" onPress={() => router.push('/login')} />
+            <TouchableOpacity
+                style={styles.registerButton}
+                onPress={handleRegister}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.registerButtonText}>Зарегистрироваться</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.loginButton}
+                onPress={() => router.push('/login')}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.loginButtonText}>Уже есть аккаунт?</Text>
+            </TouchableOpacity>
         </View>
     );
 }
@@ -70,23 +96,48 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
+        backgroundColor: '#333',    // Dark background
+        paddingHorizontal: width * 0.05,
         justifyContent: 'center',
-        backgroundColor: '#282c34'
     },
     title: {
-        fontSize: 24,
+        fontSize: width * 0.07,
         marginBottom: 16,
         textAlign: 'center',
-        color: 'white'
+        color: '#F29F58',
+        fontWeight: 'bold',
     },
     input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        marginBottom: 12,
+        backgroundColor: '#F29F58',  // Same color as in LoginScreen
+        color: '#fff',
         borderRadius: 5,
-        padding: 10,
-        backgroundColor: 'white',
-        color: 'black',
+        marginBottom: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        fontSize: 16,
+    },
+    registerButton: {
+        backgroundColor: '#F29F58',  // Stand-out color
+        paddingVertical: 12,
+        borderRadius: 5,
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    registerButtonText: {
+        color: '#333',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    loginButton: {
+        paddingVertical: 12,
+        borderRadius: 5,
+        alignItems: 'center',
+        borderColor: '#F29F58',
+        borderWidth: 2,
+    },
+    loginButtonText: {
+        color: '#F29F58',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 });

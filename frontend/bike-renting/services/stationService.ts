@@ -20,15 +20,18 @@ export type CreateStationRequest = {
     coordinates: CoordinatesDto;
 };
 
+/**
+ * Функция для получения списка станций (с постраничной загрузкой).
+ */
 export const fetchStations = async (token: string | null): Promise<Station[]> => {
     if (!token) {
         throw new Error('Токен отсутствует');
     }
 
     try {
-        let currentPage = 0; // Начальная страница
-        const pageSize = 50; // Размер страницы
-        let totalPages = 1; // Общее количество страниц (обновится после первого запроса)
+        let currentPage = 0;
+        const pageSize = 50;
+        let totalPages = 1;
         const allStations: Station[] = [];
 
         while (currentPage < totalPages) {
@@ -74,6 +77,9 @@ export const fetchStations = async (token: string | null): Promise<Station[]> =>
     }
 };
 
+/**
+ * Функция для создания станции
+ */
 export const createStation = async (
     request: CreateStationRequest,
     token: string | null
@@ -91,7 +97,6 @@ export const createStation = async (
         });
         console.log('Response from createStation:', response.data);
         const station = response.data;
-        // Map the returned data to our Station type
         return {
             id: station.id,
             name: station.name,
@@ -106,5 +111,34 @@ export const createStation = async (
         }
         console.error('Ошибка при создании станции:', error);
         throw new Error('Не удалось создать станцию.');
+    }
+};
+
+/**
+ * Функция для удаления станции по ID
+ */
+export const deleteStation = async (
+    stationId: number,
+    token: string | null
+): Promise<void> => {
+    if (!token) {
+        throw new Error('Токен отсутствует');
+    }
+
+    try {
+        console.log(`Deleting station with ID=${stationId}`);
+        await axios.delete(`${API_URL}/${stationId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        console.log(`Station #${stationId} deleted successfully`);
+    } catch (error: any) {
+        if (error.response && error.response.status === 403) {
+            console.error('Ошибка авторизации: доступ запрещен.');
+            throw new Error('Доступ запрещен. Проверьте токен авторизации.');
+        }
+        console.error('Ошибка при удалении станции:', error);
+        throw new Error('Не удалось удалить станцию.');
     }
 };

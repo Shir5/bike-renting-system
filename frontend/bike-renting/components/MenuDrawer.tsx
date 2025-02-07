@@ -158,12 +158,6 @@ export default function MenuDrawer({
 
             <Animated.View style={[styles.drawerContainer, { transform: [{ translateX }] }]}>
                 <Text style={styles.menuTitle}>Меню</Text>
-                <TouchableOpacity onPress={handleCloseMenu} style={styles.menuItem}>
-                    <Text>Опция 1</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleCloseMenu} style={styles.menuItem}>
-                    <Text>Опция 2</Text>
-                </TouchableOpacity>
                 <TouchableOpacity onPress={handleAdminModeRedirect} style={styles.menuItem}>
                     <Text>{isAdminMode ? 'User mode' : 'Admin mode'}</Text>
                 </TouchableOpacity>
