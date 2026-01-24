@@ -1,80 +1,66 @@
-import React, { createContext, useState, useEffect, ReactNode } from "react"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { router } from "expo-router"
+import React, { createContext, ReactNode, useEffect } from "react"
 import { ActivityIndicator } from "react-native"
+import { useAuth } from "@/hooks/useAuth"
+import type { AuthSnapshot } from "@/api/secureAuthStore"
 
-// Extend the type to include userId
-type AuthContextType = {
+export type AuthContextType = {
+  // старое
   userToken: string | null
   user: number | null
-  login: (token: string, userId: number) => void
-  logout: () => void
+  login: (token: string, userId: number) => Promise<void>
+  logout: () => Promise<void>
+
+  // новое (может пригодиться дальше)
+  refreshToken: string | null
+  username: string | null
+  isReady: boolean
+  signIn: (payload: { username: string; password: string }) => Promise<void>
+  signUp: (payload: { username: string; password: string }) => Promise<void>
+
+  // FIX: соответствует useAuth.restoreSession
+  restoreSession: () => Promise<AuthSnapshot>
 }
 
 export const AuthContext = createContext<AuthContextType>({
   userToken: null,
   user: null,
-  login: () => {},
-  logout: () => {},
+  login: async () => {},
+  logout: async () => {},
+
+  refreshToken: null,
+  username: null,
+  isReady: false,
+  signIn: async () => {},
+  signUp: async () => {},
+  restoreSession: async () => ({
+    accessToken: null,
+    refreshToken: null,
+    userId: null,
+    username: null,
+  }),
 })
 
-type Props = {
-  children: ReactNode
-}
+type Props = { children: ReactNode }
 
 export function AuthProvider({ children }: Props) {
-  const [userToken, setUserToken] = useState<string | null>(null)
-  const [user, setUserId] = useState<number | null>(null)
-  const [isTokenLoading, setIsTokenLoading] = useState(true)
+  const {
+    accessToken,
+    refreshToken,
+    userId,
+    username,
+    isReady,
+    restoreSession,
+    signIn,
+    signUp,
+    signOut,
+    setSession,
+  } = useAuth()
 
   useEffect(() => {
-    const loadTokenAndUserId = async () => {
-      try {
-        const storedToken = await AsyncStorage.getItem("userToken")
-        const storedUserId = await AsyncStorage.getItem("user")
-        if (storedToken) {
-          setUserToken(storedToken)
-          console.log("Token loaded from AsyncStorage:", storedToken)
-        }
-        if (storedUserId) {
-          setUserId(Number(storedUserId))
-          console.log("UserId loaded from AsyncStorage:", storedUserId)
-        }
-      } catch (error) {
-        console.error("Error loading token from AsyncStorage:", error)
-      } finally {
-        setIsTokenLoading(false)
-      }
-    }
-    loadTokenAndUserId()
-  }, [])
+    restoreSession()
+  }, [restoreSession])
 
-  const login = async (token: string, id: number) => {
-    try {
-      setUserToken(token)
-      setUserId(id)
-      await AsyncStorage.setItem("userToken", token)
-      await AsyncStorage.setItem("user", id.toString())
-      console.log("Token and user saved to AsyncStorage:", token, id)
-    } catch (error) {
-      console.error("Error saving token and user to AsyncStorage:", error)
-    }
-  }
-
-  const logout = async () => {
-    try {
-      await AsyncStorage.removeItem("userToken")
-      await AsyncStorage.removeItem("user")
-      await AsyncStorage.removeItem("isAdminMode") // чтобы режим не залипал
-      setUserToken(null)
-      setUserId(null)
-      console.log("Token and userId removed from AsyncStorage")
-    } catch (error) {
-      console.error("Error removing token and userId from AsyncStorage:", error)
-    }
-  }
-
-  if (isTokenLoading) {
+  if (!isReady) {
     return (
       <ActivityIndicator
         size="large"
@@ -85,7 +71,30 @@ export function AuthProvider({ children }: Props) {
   }
 
   return (
-    <AuthContext.Provider value={{ userToken, user, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        // старое API (совместимость)
+        userToken: accessToken,
+        user: userId,
+        login: async (token: string, id: number) => {
+          await setSession({
+            accessToken: token,
+            userId: id,
+          })
+        },
+        logout: async () => {
+          await signOut()
+        },
+
+        // новое API
+        refreshToken,
+        username,
+        isReady,
+        restoreSession,
+        signIn,
+        signUp,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage"
+import * as SecureStore from "expo-secure-store"
 
 const ACCESS_TOKEN_KEY = "accessToken"
 const REFRESH_TOKEN_KEY = "refreshToken"
@@ -12,72 +12,74 @@ export type AuthSnapshot = {
   username: string | null
 }
 
+async function setItem(key: string, value: string) {
+  await SecureStore.setItemAsync(key, value)
+}
+
+async function getItem(key: string) {
+  return SecureStore.getItemAsync(key)
+}
+
+async function delItem(key: string) {
+  await SecureStore.deleteItemAsync(key)
+}
+
 export const authStore = {
   async getAccessToken(): Promise<string | null> {
-    return AsyncStorage.getItem(ACCESS_TOKEN_KEY)
+    return (await getItem(ACCESS_TOKEN_KEY)) ?? null
   },
 
   async getRefreshToken(): Promise<string | null> {
-    return AsyncStorage.getItem(REFRESH_TOKEN_KEY)
-  },
-
-  async getUserId(): Promise<number | null> {
-    const raw = await AsyncStorage.getItem(USER_ID_KEY)
-    return raw ? Number(raw) : null
-  },
-
-  async getUsername(): Promise<string | null> {
-    const raw = await AsyncStorage.getItem(USERNAME_KEY)
-    return raw ?? null
+    return (await getItem(REFRESH_TOKEN_KEY)) ?? null
   },
 
   async setTokens(payload: {
-    accessToken: string
+    accessToken: string | null
     refreshToken?: string | null
     userId?: number | null
     username?: string | null
   }): Promise<void> {
-    await AsyncStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken)
+    if (payload.accessToken)
+      await setItem(ACCESS_TOKEN_KEY, payload.accessToken)
+    else await delItem(ACCESS_TOKEN_KEY)
 
     if (payload.refreshToken !== undefined) {
-      if (payload.refreshToken) {
-        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken)
-      } else {
-        await AsyncStorage.removeItem(REFRESH_TOKEN_KEY)
-      }
+      if (payload.refreshToken)
+        await setItem(REFRESH_TOKEN_KEY, payload.refreshToken)
+      else await delItem(REFRESH_TOKEN_KEY)
     }
 
     if (payload.userId !== undefined) {
-      if (payload.userId === null) await AsyncStorage.removeItem(USER_ID_KEY)
-      else await AsyncStorage.setItem(USER_ID_KEY, String(payload.userId))
+      if (payload.userId === null) await delItem(USER_ID_KEY)
+      else await setItem(USER_ID_KEY, String(payload.userId))
     }
 
     if (payload.username !== undefined) {
-      if (!payload.username) await AsyncStorage.removeItem(USERNAME_KEY)
-      else await AsyncStorage.setItem(USERNAME_KEY, payload.username)
+      if (!payload.username) await delItem(USERNAME_KEY)
+      else await setItem(USERNAME_KEY, payload.username)
     }
   },
 
   async clear(): Promise<void> {
-    await AsyncStorage.multiRemove([
-      ACCESS_TOKEN_KEY,
-      REFRESH_TOKEN_KEY,
-      USER_ID_KEY,
-      USERNAME_KEY,
+    await Promise.all([
+      delItem(ACCESS_TOKEN_KEY),
+      delItem(REFRESH_TOKEN_KEY),
+      delItem(USER_ID_KEY),
+      delItem(USERNAME_KEY),
     ])
   },
 
   async snapshot(): Promise<AuthSnapshot> {
     const [accessToken, refreshToken, userIdRaw, username] = await Promise.all([
-      AsyncStorage.getItem(ACCESS_TOKEN_KEY),
-      AsyncStorage.getItem(REFRESH_TOKEN_KEY),
-      AsyncStorage.getItem(USER_ID_KEY),
-      AsyncStorage.getItem(USERNAME_KEY),
+      getItem(ACCESS_TOKEN_KEY),
+      getItem(REFRESH_TOKEN_KEY),
+      getItem(USER_ID_KEY),
+      getItem(USERNAME_KEY),
     ])
 
     return {
-      accessToken,
-      refreshToken,
+      accessToken: accessToken ?? null,
+      refreshToken: refreshToken ?? null,
       userId: userIdRaw ? Number(userIdRaw) : null,
       username: username ?? null,
     }
