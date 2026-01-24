@@ -1,17 +1,15 @@
-import axios from 'axios';
+import { toAppError } from "@/api/errors"
+import { api } from "../api/client"
 
-export const addBalance = async ( amount : number, userToken :string | null) => {
-    const response = await axios.post(
-        'http://178.69.216.14:24120/islabFirst-0.1/api/payment',
-        {
-            amount: amount,
-        },
-        {
-            headers: {
-                Authorization: `Bearer ${userToken}`,
-                'Content-Type': 'application/json',
-            },
-        }
-    );
-    return response.data;
-};
+/**
+ * POST /api/v1/payment
+ * body: { amount: number }
+ */
+export const addBalance = async (amount: number) => {
+  try {
+    const response = await api.post("/payment", { amount })
+    return response.data
+  } catch (e) {
+    throw toAppError(e)
+  }
+}

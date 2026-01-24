@@ -1,99 +1,64 @@
-// services/rentalService.ts
+import { api } from "@/api/client"
 
-const API_BASE_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api'; // Replace with your actual backend URL
+export type RentalDto = any
 
-/**
- * Creates a new rental by calling the backend.
- *
- * @param userToken - The user's authentication token.
- * @param userId - The ID of the user renting the bicycle.
- * @param bicycleId - The ID of the bicycle to be rented.
- * @param startStationId - The ID of the station where the rental starts.
- * @returns A promise resolving to the created rental data.
- */export async function createRental(
-    userToken: string,
-    userId: number,
-    bicycleId: number,
-    startStationId: number
-): Promise<any> {
-    const requestBody = {
-        user: userId,
-        bicycle: bicycleId,
-        start_station: startStationId,
-    };
 
-    try {
-        console.log("Creating rental with request body:", requestBody);
-        const response = await fetch(`${API_BASE_URL}/rental`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${userToken}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
+export type CreateRentalRequest = {
+  user: number
+  bicycle: number
+  start_station: number
+}
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Error creating rental, status:", response.status, "response:", errorText);
-            throw new Error('Ошибка создания аренды');
-        }
+export type UpdateRentalRequest = {
+  user: number
+  bicycle: number
+  end_station: number
+  cost: number
+}
 
-        const rentalData = await response.json();
-        console.log("Rental created successfully:", rentalData);
-        return rentalData;
-    } catch (error: any) {
-        console.error("Exception in createRental:", error.message);
-        throw error;
-    }
+export async function createRental(
+  userId: number,
+  bicycleId: number,
+  startStationId: number,
+): Promise<RentalDto> {
+  const body: CreateRentalRequest = {
+    user: userId,
+    bicycle: bicycleId,
+    start_station: startStationId,
+  }
+
+  console.log("[createRental] POST /rental payload:", body)
+
+  // Если сервер возвращает что-то типа RentalDto — укажи тип: api.post<RentalDto>
+  const res = await api.post<RentalDto>("/rental", body)
+
+  console.log("[createRental] response status:", res.status)
+  console.log("[createRental] response data:", res.data)
+
+  return res.data
 }
 
 
-/**
- * Updates an existing rental to stop it by calling the backend.
- *
- * @param userToken - The user's authentication token.
- * @param rentalId - The ID of the rental to update.
- * @param endStationId - The ID of the station where the rental ends.
- * @returns A promise resolving to the updated rental data.
- */
 export async function updateRental(
-    userToken: string,
-    rentalId: number,
-    userId: number,
-    bicycleId: number,
-    endStationId: number,
-    cost: number
-): Promise<any> {
-    const requestBody = {
-        user: userId,            // ключ "user" для user_id
-        bicycle: bicycleId,      // ключ "bicycle" для bicycle_id
-        end_station: endStationId, // ключ "end_station" для станции завершения
-        cost: cost               // итоговая стоимость аренды
-    };
+  rentalId: number,
+  userId: number,
+  bicycleId: number,
+  endStationId: number,
+  cost: number,
+): Promise<RentalDto> {
+  const body: UpdateRentalRequest = {
+    user: userId,
+    bicycle: bicycleId,
+    end_station: endStationId,
+    cost,
+  }
 
-    try {
-        console.log(`Updating rental ${rentalId} with request body:`, requestBody);
-        const response = await fetch(`${API_BASE_URL}/rental/${rentalId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${userToken}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
+  console.log(`[updateRental] PUT /rental/${rentalId} payload:`, body)
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Error updating rental, status:", response.status, "response:", errorText);
-            throw new Error('Ошибка завершения аренды');
-        }
+  const res = await api.put<RentalDto>(`/rental/${rentalId}`, body)
 
-        const updatedRental = await response.json();
-        console.log("Rental updated:", updatedRental);
-        return updatedRental;
-    } catch (error: any) {
-        console.error("Exception in updateRental:", error.message);
-        throw error;
-    }
+  console.log("[updateRental] response status:", res.status)
+  console.log("[updateRental] response data:", res.data)
+
+  return res.data
 }

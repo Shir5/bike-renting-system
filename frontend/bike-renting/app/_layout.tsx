@@ -4,12 +4,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
-import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { AuthProvider } from '@/context/AuthContext';
 
 // Если у вас контекст аутентификации в другом пути — поправьте импорт:
-import { AuthProvider } from '../context/AuthContext';
 
 // Предотвращаем автоскрытие SplashScreen
 SplashScreen.preventAutoHideAsync();

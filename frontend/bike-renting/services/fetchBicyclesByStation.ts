@@ -1,113 +1,133 @@
-// src/services/bicycleService.ts
-import axios from 'axios';
+import type { AxiosError } from "axios"
+import { api } from "../api/client"
+import { toAppError } from "@/api/errors"
 
 export interface Bicycle {
-    repairId: any;
-    id: number;
-    model: string;
-    type: string; // Enum `Color` как строка
-    status: string; // Enum `Status` как строка
-    station: number; // ID станции
-    lastServiceDate: string | null; // ISO строка даты или null
+  repairId: number | null
+  id: number
+  model: string
+  type: string
+  status: string
+  station: number
+  lastServiceDate: string | null
+  mileage?: number
 }
 
-// Укажите базовый URL вашего API
-const API_BASE_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api/station/bicycle'; // Замените на ваш IP-адрес для эмулятора Android
+type PagedResponse<T> = {
+  content: T[]
+  totalElements?: number
+  totalPages?: number
+  number?: number
+  size?: number
+}
 
+type BicycleDto = {
+  repairId?: number | null
+  id: number
+  model: string
+  type: string
+  status: string
+  station?: number | { id: number }
+  stationId?: number
+  lastServiceDate?: string | null
+  mileage?: number
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const shouldRetry = (error: unknown): boolean => {
+  const axiosErr = error as AxiosError<any>
+
+  // сеть/timeout: нет response
+  if (!axiosErr?.response) return true
+
+  const status = axiosErr.response.status
+
+  // 401 обрабатывается интерсептором (refresh+retry). Здесь не ретраим.
+  if (status === 401) return false
+
+  // 5xx и 429 можно ретраить
+  if (status >= 500) return true
+  if (status === 429) return true
+
+  // 4xx обычно ошибка запроса — не ретраим
+  return false
+}
+
+/**
+ * Swagger: GET /api/v1/stations/{id}/bicycles?page=0&size=20
+ *
+ * Токен НЕ передаём — его подставит interceptor из api/client.ts
+ */
 export const fetchBicyclesByStationId = async (
-    stationId: number,
-    token: string | null,
-    page: number = 0,
-    size: number = 20,
-    retries: number = 3, // Количество повторных попыток
-    delay: number = 1000 // Задержка между попытками в миллисекундах
+  stationId: number,
+  page: number = 0,
+  size: number = 20,
+  retries: number = 3,
+  delay: number = 1000,
 ): Promise<Bicycle[]> => {
-    console.log('Начало fetchBicyclesByStationId');
-    console.log(`Station ID: ${stationId}`);
-    console.log(`Token: ${token}`);
-    console.log(`Page: ${page}`);
-    console.log(`Size: ${size}`);
+  const url = `/stations/${stationId}/bicycles`
 
-    if (!token) {
-        console.error('Токен аутентификации отсутствует. Пожалуйста, войдите в систему.');
-        throw new Error('Токен аутентификации отсутствует. Пожалуйста, войдите в систему.');
+  console.log("[fetchBicyclesByStationId] start", { stationId, page, size })
+
+  let lastError: unknown = null
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await api.get<PagedResponse<BicycleDto>>(url, {
+        params: { page, size },
+      })
+
+      const data = res.data
+      if (!data?.content || !Array.isArray(data.content)) {
+        throw new Error("Неверный формат ответа от сервера: нет content[]")
+      }
+
+      const bicycles: Bicycle[] = data.content.map((dto) => ({
+        repairId: dto.repairId ?? null,
+        id: dto.id,
+        model: dto.model,
+        type: dto.type,
+        status: dto.status,
+        station:
+          (typeof dto.station === "object" ? dto.station?.id : dto.station) ??
+          dto.stationId ??
+          0,
+        lastServiceDate: dto.lastServiceDate ?? null,
+        mileage: dto.mileage,
+      }))
+
+      console.log("[fetchBicyclesByStationId] ok", {
+        status: res.status,
+        count: bicycles.length,
+      })
+
+      return bicycles
+    } catch (e) {
+      lastError = e
+
+      const canRetry = attempt < retries && shouldRetry(e)
+      if (canRetry) {
+        console.warn(
+          `[fetchBicyclesByStationId] attempt ${attempt} failed, retry in ${delay}ms`,
+        )
+        await sleep(delay)
+        continue
+      }
+
+      // Нормализуем ошибку
+      const appErr = toAppError(e)
+      console.error("[fetchBicyclesByStationId] failed", {
+        attempt,
+        status: appErr.status,
+        path: appErr.path,
+        code: appErr.code,
+        message: appErr.message,
+      })
+
+      throw appErr
     }
+  }
 
-    const requestUrl = `${API_BASE_URL}`;
-    console.log(`Запрос к URL: ${requestUrl}`);
-
-    console.log('Заголовки запроса:', {
-        Authorization: `Bearer ${token}`,
-    });
-    console.log('Параметры запроса:', {
-        id: stationId,
-        page,
-        size,
-    });
-
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            const response = await axios.get(requestUrl, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                params: {
-                    id: stationId,
-                    page,
-                    size,
-                },
-                timeout: 20000, // Тайм-аут в 20 секунд
-            });
-
-            console.log(`Ответ от сервера: Статус ${response.status}`);
-            console.log('Данные ответа:', response.data);
-
-            if (!response.data || !response.data.content) {
-                console.warn('В ответе отсутствует поле `content`');
-                throw new Error('Неверный формат ответа от сервера.');
-            }
-
-            const bicycles: Bicycle[] = response.data.content.map((bicycleDto: any) => ({
-                id: bicycleDto.id,
-                model: bicycleDto.model,
-                type: bicycleDto.type,
-                status: bicycleDto.status,
-                station: bicycleDto.station,
-            }));
-
-            console.log('Преобразованные велосипеды:', bicycles);
-
-            return bicycles;
-        } catch (error: any) {
-            if (attempt < retries) {
-                console.warn(`Попытка ${attempt} не удалась. Повтор через ${delay} мс...`);
-                await new Promise((resolve) => setTimeout(resolve, delay));
-            } else {
-                if (error.response) {
-                    console.error('Ошибка от сервера:', {
-                        статус: error.response.status,
-                        данные: error.response.data,
-                        заголовки: error.response.headers,
-                    });
-                    if (error.response.data && error.response.data.message) {
-                        console.error('Сообщение ошибки от сервера:', error.response.data.message);
-                    }
-                } else if (error.request) {
-                    console.error('Запрос был отправлен, но ответа не получено:', error.request);
-                } else {
-                    console.error('Ошибка при настройке запроса:', error.message);
-                }
-
-                console.error('Полная ошибка:', error);
-
-                if (error.response && error.response.data && error.response.data.message) {
-                    throw new Error(error.response.data.message);
-                }
-                throw new Error('Не удалось загрузить велосипеды.');
-            }
-        }
-    }
-
-    console.log('Завершение fetchBicyclesByStationId');
-    return []; // Это никогда не будет выполнено, так как функция либо возвращает данные, либо выбрасывает ошибку
-};
+  throw toAppError(lastError)
+}

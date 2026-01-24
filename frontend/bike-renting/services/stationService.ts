@@ -1,144 +1,92 @@
-import axios from 'axios';
+import { api } from "@/api/client"
 
-const API_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api/station';
+const STATIONS_PATH = "/stations"
 
 export type Station = {
-    id: number;
-    name: string;
-    latitude: number;
-    longitude: number;
-    availableBikes: number;
-};
+  id: number
+  name: string
+  latitude: number
+  longitude: number
+  availableBikes: number
+}
 
 export type CoordinatesDto = {
-    latitude: number;
-    longitude: number;
-};
+  latitude: number
+  longitude: number
+}
 
 export type CreateStationRequest = {
-    name: string;
-    coordinates: CoordinatesDto;
-};
+  name: string
+  coordinates: CoordinatesDto
+}
 
-/**
- * Функция для получения списка станций (с постраничной загрузкой).
- */
-export const fetchStations = async (token: string | null): Promise<Station[]> => {
-    if (!token) {
-        throw new Error('Токен отсутствует');
+type PagedResponse<T> = {
+  content: T[]
+  totalPages: number
+}
+
+type StationBackendDto = {
+  id: number
+  name: string
+  coordinates: { latitude: number; longitude: number }
+  availableBicycles: number
+}
+
+const mapStation = (station: StationBackendDto): Station => ({
+  id: station.id,
+  name: station.name,
+  latitude: station.coordinates.latitude,
+  longitude: station.coordinates.longitude,
+  availableBikes: station.availableBicycles,
+})
+
+
+export const fetchStations = async (): Promise<Station[]> => {
+  let currentPage = 0
+  const pageSize = 50
+  let totalPages = 1
+  const allStations: Station[] = []
+
+  while (currentPage < totalPages) {
+    console.log(
+      `[fetchStations] GET ${STATIONS_PATH} page=${currentPage} size=${pageSize}`,
+    )
+
+    const res = await api.get<PagedResponse<StationBackendDto>>(STATIONS_PATH, {
+      params: { page: currentPage, size: pageSize },
+    })
+
+    const { content, totalPages: fetchedTotalPages } = res.data
+
+    if (!Array.isArray(content)) {
+      throw new Error("Неверный формат данных: content не является массивом.")
     }
 
-    try {
-        let currentPage = 0;
-        const pageSize = 50;
-        let totalPages = 1;
-        const allStations: Station[] = [];
+    allStations.push(...content.map(mapStation))
+    totalPages = fetchedTotalPages ?? totalPages
+    currentPage += 1
+  }
 
-        while (currentPage < totalPages) {
-            console.log(`Fetching stations: page ${currentPage}, size ${pageSize}`);
-            const response = await axios.get(API_URL, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                params: { page: currentPage, size: pageSize },
-            });
+  console.log("[fetchStations] All stations fetched:", allStations)
+  return allStations
+}
 
-            console.log('Response data:', response.data);
-
-            const { content, totalPages: fetchedTotalPages } = response.data;
-
-            if (!content || !Array.isArray(content)) {
-                throw new Error('Неверный формат данных: content не является массивом.');
-            }
-
-            allStations.push(
-                ...content.map((station: any) => ({
-                    id: station.id,
-                    name: station.name,
-                    latitude: station.coordinates.latitude,
-                    longitude: station.coordinates.longitude,
-                    availableBikes: station.availableBicycles,
-                }))
-            );
-
-            totalPages = fetchedTotalPages;
-            currentPage += 1;
-        }
-
-        console.log('All stations fetched:', allStations);
-        return allStations;
-    } catch (error: any) {
-        if (error.response && error.response.status === 403) {
-            console.error('Ошибка авторизации: доступ запрещен.');
-            throw new Error('Доступ запрещен. Проверьте токен авторизации.');
-        }
-        console.error('Ошибка при загрузке станций:', error);
-        throw new Error('Не удалось загрузить станции.');
-    }
-};
-
-/**
- * Функция для создания станции
- */
 export const createStation = async (
-    request: CreateStationRequest,
-    token: string | null
+  request: CreateStationRequest,
 ): Promise<Station> => {
-    if (!token) {
-        throw new Error('Токен отсутствует');
-    }
+  console.log("[createStation] POST", STATIONS_PATH, "payload:", request)
 
-    try {
-        console.log('Creating station with payload:', request);
-        const response = await axios.post(API_URL, request, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-        console.log('Response from createStation:', response.data);
-        const station = response.data;
-        return {
-            id: station.id,
-            name: station.name,
-            latitude: station.coordinates.latitude,
-            longitude: station.coordinates.longitude,
-            availableBikes: station.availableBicycles,
-        };
-    } catch (error: any) {
-        if (error.response && error.response.status === 403) {
-            console.error('Ошибка авторизации: доступ запрещен.');
-            throw new Error('Доступ запрещен. Проверьте токен авторизации.');
-        }
-        console.error('Ошибка при создании станции:', error);
-        throw new Error('Не удалось создать станцию.');
-    }
-};
+  const res = await api.post<StationBackendDto>(STATIONS_PATH, request)
 
-/**
- * Функция для удаления станции по ID
- */
-export const deleteStation = async (
-    stationId: number,
-    token: string | null
-): Promise<void> => {
-    if (!token) {
-        throw new Error('Токен отсутствует');
-    }
+  console.log("[createStation] response status:", res.status)
+  console.log("[createStation] response data:", res.data)
 
-    try {
-        console.log(`Deleting station with ID=${stationId}`);
-        await axios.delete(`${API_URL}/${stationId}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-        console.log(`Station #${stationId} deleted successfully`);
-    } catch (error: any) {
-        if (error.response && error.response.status === 403) {
-            console.error('Ошибка авторизации: доступ запрещен.');
-            throw new Error('Доступ запрещен. Проверьте токен авторизации.');
-        }
-        console.error('Ошибка при удалении станции:', error);
-        throw new Error('Не удалось удалить станцию.');
-    }
-};
+  return mapStation(res.data)
+}
+
+
+export const deleteStation = async (stationId: number): Promise<void> => {
+  console.log(`[deleteStation] DELETE ${STATIONS_PATH}/${stationId}`)
+
+  await api.delete(`${STATIONS_PATH}/${stationId}`)
+}

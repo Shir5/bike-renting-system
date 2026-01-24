@@ -34,7 +34,7 @@ export default function LoginScreen() {
         try {
             const jwtResponse = await loginUser({ username, password });
             if (jwtResponse) {
-                login(jwtResponse.access_token, jwtResponse.user);
+                login(jwtResponse.access_token, jwtResponse.user_id);
                 Alert.alert('Успех', 'Вход выполнен!');
                 router.replace('/'); // Navigate to the main page
             } else {

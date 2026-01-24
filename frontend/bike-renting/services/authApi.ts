@@ -1,72 +1,77 @@
-import axios from 'axios';
+import { authStore } from "@/api/authStore"
+import { api } from "@/api/client"
+import axios, { AxiosError } from "axios"
 
-// Базовый URL API
-const API_URL = 'http://178.69.216.14:24120/islabFirst-0.1/api';
 
-// Создаём экземпляр axios с базовой настройкой
-const api = axios.create({ baseURL: API_URL });
+const API_URL = "http://100.83.112.14:8080/api/v1"
 
-// Тип ответа от сервера (JwtResponse)
 export type JwtResponse = {
-    access_token: string;
-    user: number;
-    username: string;
-};
+  access_token: string
+  refresh_token?: string
+  expires_in?: number
+  token_type?: string
+  user_id: number
+  username?: string
+}
 
-/**
- * Регистрация
- * @param data объект вида { username, password }
- * Возвращает объект JwtResponse: { access_token, user, username }
- */
+const extractErrorMessage = (error: unknown): string => {
+  const err = error as AxiosError<any>
+  return (
+    err?.response?.data?.message || err?.message || "Неизвестная ошибка запроса"
+  )
+}
+
 export async function registerUser(data: {
-    username: string;
-    password: string;
+  username: string
+  password: string
 }): Promise<JwtResponse> {
-    try {
-        console.log('Регистрация пользователя:', data);
-        const res = await api.post('/auth/register', data);
-        console.log('Ответ сервера (регистрация):', res.data);
+  try {
+    const res = await api.post<JwtResponse>("/auth/register", data)
 
-        // Проверяем, что сервер вернул access_token и user_id
-        if (res.data && res.data.access_token && res.data.user) {
-            return res.data as JwtResponse;
-        } else {
-            throw new Error('Сервер не вернул access_token или user.');
-        }
-    } catch (error: any) {
-        console.error('Ошибка при регистрации:', error.message);
-        if (error.response) {
-            console.error('Ответ сервера (ошибка):', error.response.data);
-        }
-        throw error;
+    if (res.data?.access_token && typeof res.data.user_id === "number") {
+      await authStore.setTokens({
+        accessToken: res.data.access_token,
+        refreshToken: res.data.refresh_token ?? null,
+        userId: res.data.user_id,
+        username: res.data.username ?? data.username,
+      })
+      return res.data
     }
+
+    throw new Error("Сервер не вернул access_token или user_id.")
+  } catch (error: any) {
+    throw new Error(extractErrorMessage(error))
+  }
 }
 
-/**
- * Логин
- * @param credentials объект вида { username, password }
- * Возвращает объект JwtResponse: { access_token, user, username }
- */
 export async function loginUser(credentials: {
-    username: string;
-    password: string;
+  username: string
+  password: string
 }): Promise<JwtResponse> {
-    try {
-        console.log('Авторизация пользователя:', credentials);
-        const res = await api.post('/auth/login', credentials);
-        console.log('Ответ сервера (логин):', res.data);
+  try {
+    const res = await api.post<JwtResponse>("/auth/login", credentials)
 
-        // Проверяем, что сервер вернул access_token и user_id
-        if (res.data && res.data.access_token && res.data.user) {
-            return res.data as JwtResponse;
-        } else {
-            throw new Error('Сервер не вернул access_token или user.');
-        }
-    } catch (error: any) {
-        console.error('Ошибка при авторизации:', error.message);
-        if (error.response) {
-            console.error('Ответ сервера (ошибка):', error.response.data);
-        }
-        throw error;
+    if (res.data?.access_token && typeof res.data.user_id === "number") {
+      await authStore.setTokens({
+        accessToken: res.data.access_token,
+        refreshToken: res.data.refresh_token ?? null,
+        userId: res.data.user_id,
+        username: res.data.username ?? credentials.username,
+      })
+      return res.data
     }
+
+    throw new Error("Сервер не вернул access_token или user_id.")
+  } catch (error: any) {
+    throw new Error(extractErrorMessage(error))
+  }
 }
+
+export async function logout(): Promise<void> {
+  await authStore.clear()
+}
+
+export const authHttp = axios.create({
+  baseURL: API_URL,
+  timeout: 20000,
+})
