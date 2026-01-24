@@ -13,7 +13,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  AppState,
   StatusBar,
 } from "react-native"
 import MapView, { Marker } from "react-native-maps"
@@ -26,16 +25,17 @@ import { router } from "expo-router"
 import MenuDrawer from "../components/MenuDrawer"
 import { AuthContext } from "../context/AuthContext"
 
-// ХУКИ (пути подстрой под свой проект)
+// ХУКИ
 import { useStations } from "@/hooks/useStations"
 import { useLocation } from "@/hooks/useLocation"
 import { usePayments } from "@/hooks/usePayments"
+import { useRentals } from "@/hooks/useRentals"
 
-// типы (если у тебя типы живут в services — импортируй оттуда)
+// типы
 import type { Station } from "../services/stationService"
 import type { Bicycle } from "../services/fetchBicyclesByStation"
 import { fetchBicyclesByStationId } from "../services/fetchBicyclesByStation"
-import { useRentals } from "@/hooks/useRentals"
+import { StationsMap } from "@/components/StationsMap"
 
 const { width, height } = Dimensions.get("window")
 const TARIFF_PER_MINUTE = 1.5
@@ -153,7 +153,7 @@ export default function HomeScreen() {
   const [isStartScannerVisible, setIsStartScannerVisible] = useState(false)
   const [isStopScannerVisible, setIsStopScannerVisible] = useState(false)
 
-  // Bikes in station modal (можно вынести в отдельный хук позже)
+  // Bikes in station modal
   const [bicycles, setBicycles] = useState<Bicycle[]>([])
   const [loadingBicycles, setLoadingBicycles] = useState(false)
   const [errorBicycles, setErrorBicycles] = useState<string | null>(null)
@@ -168,9 +168,6 @@ export default function HomeScreen() {
   const [scrollOffset, setScrollOffset] = useState(0)
   const flatListRef = useRef<any>(null)
 
-  // Map ref
-  const mapRef = useRef<MapView>(null)
-
   // --- AUTH redirect ---
   useEffect(() => {
     if (!userToken) router.replace("/login")
@@ -184,12 +181,18 @@ export default function HomeScreen() {
     reload: reloadStations,
   } = useStations()
 
+  // ВАЖНО: AppState и autoStart теперь внутри useLocation
   const {
     location,
     status: locationStatus,
+    // requestPermission можно оставить для ручного вызова (если надо)
     requestPermission,
     refresh: refreshLocation,
-  } = useLocation()
+    error: locationError,
+  } = useLocation({
+    autoStart: true,
+    refreshOnAppActive: true,
+  })
 
   const {
     balance,
@@ -205,33 +208,6 @@ export default function HomeScreen() {
     stopRental,
     isLoading: rentalLoading,
   } = useRentals()
-
-  // Center map on location
-  useEffect(() => {
-    if (!location) return
-    mapRef.current?.animateToRegion(
-      {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      },
-      800,
-    )
-  }, [location])
-
-  // Ask location permission once (or on demand)
-  useEffect(() => {
-    if (locationStatus === "idle") requestPermission()
-  }, [locationStatus, requestPermission])
-
-  // Update location on app foreground
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") refreshLocation()
-    })
-    return () => sub.remove()
-  }, [refreshLocation])
 
   // Stations initial load after auth
   useEffect(() => {
@@ -251,6 +227,14 @@ export default function HomeScreen() {
   useEffect(() => {
     if (balanceError) Alert.alert("Ошибка", balanceError)
   }, [balanceError])
+
+  useEffect(() => {
+    if (locationError) {
+      // не спамим алертами; при желании можно убрать или заменить на toast
+      // Alert.alert("Геолокация", locationError)
+      console.log("[locationError]", locationError)
+    }
+  }, [locationError])
 
   const toggleMenu = () => setMenuOpen((v) => !v)
 
@@ -359,7 +343,6 @@ export default function HomeScreen() {
     try {
       await startRental(targetBicycle.id, selectedStation.id)
       Alert.alert("Успех", "Аренда начата!")
-      // синхронизация UI
       await reloadStations()
     } catch (e: any) {
       Alert.alert("Ошибка", e?.message || "Не удалось начать аренду.")
@@ -380,13 +363,11 @@ export default function HomeScreen() {
       return
     }
 
-    // cost лучше считать на сервере; но раз у тебя сейчас тариф клиентский — передадим cost
     const calculatedCost = Math.round((rentalTime / 60) * TARIFF_PER_MINUTE)
 
     try {
       await stopRental(currentRental.id, stationId, calculatedCost)
       Alert.alert("Аренда остановлена", `Итоговый расход: ${calculatedCost} ₽`)
-      // синхронизация
       await Promise.all([reloadStations(), reloadBalance()])
     } catch (e: any) {
       Alert.alert("Ошибка", e?.message || "Не удалось завершить аренду.")
@@ -397,7 +378,6 @@ export default function HomeScreen() {
     setScrollOffset(event.nativeEvent.contentOffset.y)
   }
 
-  // общий лоадинг экрана: auth уже проверили, дальше можно по частям
   const globalLoading = stationsLoading || balanceLoading
 
   if (globalLoading) {
@@ -411,6 +391,12 @@ export default function HomeScreen() {
 
   const mapLatitude = location?.latitude ?? 59.9343
   const mapLongitude = location?.longitude ?? 30.3351
+
+  // Обновление по кнопке: станции + геолокация
+  const handleReloadAll = () => {
+    reloadStations()
+    refreshLocation()
+  }
 
   return (
     <MenuDrawer menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
@@ -432,37 +418,18 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            region={{
-              latitude: mapLatitude,
-              longitude: mapLongitude,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
+          <StationsMap
+            stations={stations}
+            userLocation={location} // из useLocation
+            isMenuOpen={menuOpen}
+            onStationPress={handleMarkerPress}
+          />
+          <AnimatedUpdateButton
+            onPress={() => {
+              reloadStations()
+              refreshLocation()
             }}
-            showsUserLocation={true}
-            followsUserLocation={false}
-            scrollEnabled={!menuOpen}
-            zoomEnabled={!menuOpen}
-          >
-            <AnimatedUpdateButton onPress={reloadStations} />
-
-            {stations.map((station) => (
-              <Marker
-                key={station.id}
-                coordinate={{
-                  latitude: station.latitude,
-                  longitude: station.longitude,
-                }}
-                image={require("../assets/images/scooter.png")}
-                title={station.name}
-                description={`Доступно велосипедов: ${station.availableBikes}`}
-                onPress={() => handleMarkerPress(station)}
-                calloutOffset={{ x: 0.5, y: 0.5 }}
-              />
-            ))}
-          </MapView>
+          />
         </View>
 
         <View style={styles.infoContainer}>
