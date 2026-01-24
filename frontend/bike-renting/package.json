@@ -13,7 +13,11 @@
     "lint": "expo lint",
     "lint:fix": "expo lint -- --fix",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "doctor": "npx expo-doctor",
+    "outdated": "npm outdated",
+    "deps:check": "depcheck",
+    "deps:clean-install": "rm -rf node_modules package-lock.json && npm i"
   },
   "jest": {
     "preset": "jest-expo"
