@@ -1,6 +1,6 @@
 import type { AxiosError } from "axios"
-import { api } from "../api/client"
 import { toAppError } from "@/api/errors"
+import { api } from "@/api/client"
 
 export interface Bicycle {
   repairId: number | null
@@ -54,11 +54,7 @@ const shouldRetry = (error: unknown): boolean => {
   return false
 }
 
-/**
- * Swagger: GET /api/v1/stations/{id}/bicycles?page=0&size=20
- *
- * Токен НЕ передаём — его подставит interceptor из api/client.ts
- */
+
 export const fetchBicyclesByStationId = async (
   stationId: number,
   page: number = 0,

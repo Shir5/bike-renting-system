@@ -3,8 +3,8 @@ import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
 } from "axios"
-import { authStore } from "./authStore"
 import { toAppError } from "./errors"
+import { secureAuthStore } from "./secureAuthStore"
 
 const API_URL = "http://100.83.112.14:8080/api/v1"
 const REFRESH_PATH = "/auth/refresh"
@@ -33,7 +33,7 @@ const isAuthEndpoint = (url?: string) => {
 let refreshPromise: Promise<string | null> | null = null
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = await authStore.getRefreshToken()
+  const refreshToken = await secureAuthStore.getRefreshToken()
   if (!refreshToken) return null
 
   if (refreshPromise) return refreshPromise
@@ -52,14 +52,14 @@ async function refreshAccessToken(): Promise<string | null> {
 
       if (!newAccess) return null
 
-      await authStore.setTokens({
+      await secureAuthStore.setAuth({
         accessToken: newAccess,
         refreshToken: newRefresh,
       })
 
       return newAccess
     } catch {
-      await authStore.clear()
+      await secureAuthStore.clear()
       return null
     } finally {
       refreshPromise = null
@@ -70,17 +70,42 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  const token = await authStore.getAccessToken()
+  const token = await secureAuthStore.getAccessToken()
+
   if (token && !isAuthEndpoint(config.url)) {
     config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  const authHeader =
+    (config.headers as any)?.Authorization ??
+    (config.headers as any)?.authorization
+
+  console.log(
+    "[API REQ]",
+    (config.method ?? "GET").toUpperCase(),
+    config.url,
+    "| hasAuthHeader:",
+    !!authHeader,
+    "| token:",
+    token ? `yes(len=${token.length})` : "no",
+  )
+
   return config
 })
 
 api.interceptors.response.use(
   (resp) => resp,
   async (error: AxiosError) => {
+    console.log(
+      "[API ERR]",
+      error.response?.status,
+      error.config?.method?.toUpperCase(),
+      error.config?.url,
+      "| data:",
+      error.response?.data,
+    )
+
     const original = error.config as any
     const status = error.response?.status
 

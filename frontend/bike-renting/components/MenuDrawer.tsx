@@ -9,18 +9,24 @@ import {
   Dimensions,
   PanResponder,
 } from "react-native"
-import { AuthContext } from "../context/AuthContext" // Adjust the path as needed
-import axios from "axios"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { router } from "expo-router"
 
+import { AuthContext } from "../context/AuthContext"
+import { api } from "@/api/client" // ВАЖНО: один общий api
+import { secureAuthStore } from "@/api/secureAuthStore"
+
 const { width } = Dimensions.get("window")
-// Maximum menu width (70% of screen width)
 const MAX_MENU_WIDTH = width * 0.7
+
 interface MenuDrawerProps {
-  children: ReactNode // Main content wrapped by the Drawer
-  menuOpen: boolean // Whether the menu is open (from HomeScreen)
-  setMenuOpen: (open: boolean) => void // Function to update the menu state
+  children: ReactNode
+  menuOpen: boolean
+  setMenuOpen: (open: boolean) => void
+}
+
+type AdminRoleResponse = {
+  role: "ADMIN" | "USER" | string
 }
 
 export default function MenuDrawer({
@@ -28,9 +34,11 @@ export default function MenuDrawer({
   menuOpen,
   setMenuOpen,
 }: MenuDrawerProps) {
-  const { logout } = useContext(AuthContext) // Get logout function from AuthContext
+  const { logout } = useContext(AuthContext)
+
   const [animation] = useState(new Animated.Value(menuOpen ? 1 : 0))
   const [isAdminMode, setIsAdminMode] = useState(false)
+  const [isCheckingRole, setIsCheckingRole] = useState(false)
 
   useEffect(() => {
     Animated.timing(animation, {
@@ -39,16 +47,13 @@ export default function MenuDrawer({
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
     }).start()
-  }, [menuOpen])
+  }, [menuOpen, animation])
 
   useEffect(() => {
-    // Check admin mode on app startup
     const checkAdminMode = async () => {
       try {
         const storedMode = await AsyncStorage.getItem("isAdminMode")
-        if (storedMode === "true") {
-          setIsAdminMode(true)
-        }
+        setIsAdminMode(storedMode === "true")
       } catch (error) {
         console.error(
           "Ошибка при загрузке состояния режима администратора:",
@@ -56,11 +61,9 @@ export default function MenuDrawer({
         )
       }
     }
-
     checkAdminMode()
   }, [])
 
-  // Interpolate translateX based on animation value
   const translateX = animation.interpolate({
     inputRange: [0, 1],
     outputRange: [-MAX_MENU_WIDTH, 0],
@@ -68,7 +71,7 @@ export default function MenuDrawer({
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => {
-      const isSwipeFromEdge = gestureState.moveX < width * 0.1 // Only allow swipe from the left edge
+      const isSwipeFromEdge = gestureState.moveX < width * 0.1
       const isHorizontalSwipe =
         Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
       return isHorizontalSwipe && (!menuOpen ? isSwipeFromEdge : true)
@@ -97,11 +100,6 @@ export default function MenuDrawer({
     },
   })
 
-  const handleCloseMenu = () => {
-    setMenuOpen(false)
-  }
-
-  // When the Exit button is pressed, run an exit animation then call logout to clear context values and redirect.
   const handleExit = () => {
     Animated.timing(animation, {
       toValue: 0,
@@ -110,48 +108,47 @@ export default function MenuDrawer({
       useNativeDriver: false,
     }).start(async () => {
       setMenuOpen(false)
+      await AsyncStorage.setItem("isAdminMode", "false")
       await logout()
-      router.replace("/login") // или '/register' если у тебя старт там
+      router.replace("/login")
     })
   }
 
   const handleAdminModeRedirect = async () => {
     try {
-      const token = await AsyncStorage.getItem("userToken")
+      setIsCheckingRole(true)
 
-      if (!token) {
+      // Если токена нет — сразу на логин (и не делаем запрос)
+      const access = await secureAuthStore.getAccessToken()
+      if (!access) {
         console.error("Токен отсутствует!")
+        router.replace("/login")
         return
       }
 
+      // Если уже admin mode — выключаем и уходим на home
       if (isAdminMode) {
-        // Switch back to user mode
         setIsAdminMode(false)
-        await AsyncStorage.setItem("isAdminMode", "false") // Save state
-        router.push("/") // Change this to your user home page
+        await AsyncStorage.setItem("isAdminMode", "false")
+        router.push("/")
         return
       }
 
-      const response = await axios.get(
-        "http://100.83.112.14:8080/api/v1/admin-requests/role",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
+      // ВАЖНО: запрос через общий api (интерцепторы + refresh)
+      const res = await api.get<AdminRoleResponse>("/admin-requests/role")
 
-      console.log(response.data)
-
-      if (response.data.role === "ADMIN") {
+      if (res.data?.role === "ADMIN") {
         setIsAdminMode(true)
-        await AsyncStorage.setItem("isAdminMode", "true") // Save state
+        await AsyncStorage.setItem("isAdminMode", "true")
         router.push("/admin")
       } else {
         console.error("Недостаточно прав")
       }
     } catch (error) {
+      // Тут уже может быть appErr из toAppError (если запрос пошёл через api)
       console.error("Ошибка при запросе в админ-режим:", error)
+    } finally {
+      setIsCheckingRole(false)
     }
   }
 
@@ -163,12 +160,21 @@ export default function MenuDrawer({
         style={[styles.drawerContainer, { transform: [{ translateX }] }]}
       >
         <Text style={styles.menuTitle}>Меню</Text>
+
         <TouchableOpacity
           onPress={handleAdminModeRedirect}
           style={styles.menuItem}
+          disabled={isCheckingRole}
         >
-          <Text>{isAdminMode ? "User mode" : "Admin mode"}</Text>
+          <Text>
+            {isCheckingRole
+              ? "Проверка..."
+              : isAdminMode
+              ? "User mode"
+              : "Admin mode"}
+          </Text>
         </TouchableOpacity>
+
         <TouchableOpacity onPress={handleExit} style={styles.exitButton}>
           <Text style={styles.exitButtonText}>Выход</Text>
         </TouchableOpacity>
@@ -208,7 +214,7 @@ const styles = StyleSheet.create({
     marginTop: 30,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: "#D9534F", // Red background
+    backgroundColor: "#D9534F",
     borderRadius: 5,
     alignItems: "center",
   },
@@ -216,18 +222,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
-  },
-  updateButtonContainer: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    zIndex: 1000,
-    backgroundColor: "orange",
-    borderRadius: 100,
-    padding: 4,
-  },
-  updateButton: {
-    width: 40,
-    height: 40,
   },
 })

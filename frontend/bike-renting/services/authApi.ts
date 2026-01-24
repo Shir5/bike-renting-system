@@ -1,5 +1,5 @@
-import { authStore } from "@/api/authStore"
 import { api } from "@/api/client"
+import { secureAuthStore } from "@/api/secureAuthStore"
 import axios, { AxiosError } from "axios"
 
 
@@ -29,7 +29,7 @@ export async function registerUser(data: {
     const res = await api.post<JwtResponse>("/auth/register", data)
 
     if (res.data?.access_token && typeof res.data.user_id === "number") {
-      await authStore.setTokens({
+      await secureAuthStore.setAuth({
         accessToken: res.data.access_token,
         refreshToken: res.data.refresh_token ?? null,
         userId: res.data.user_id,
@@ -52,7 +52,7 @@ export async function loginUser(credentials: {
     const res = await api.post<JwtResponse>("/auth/login", credentials)
 
     if (res.data?.access_token && typeof res.data.user_id === "number") {
-      await authStore.setTokens({
+      await secureAuthStore.setAuth({
         accessToken: res.data.access_token,
         refreshToken: res.data.refresh_token ?? null,
         userId: res.data.user_id,
@@ -68,7 +68,7 @@ export async function loginUser(credentials: {
 }
 
 export async function logout(): Promise<void> {
-  await authStore.clear()
+  await secureAuthStore.clear()
 }
 
 export const authHttp = axios.create({

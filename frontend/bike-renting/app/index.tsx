@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react"
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react"
 import {
   View,
   Text,
@@ -18,22 +18,24 @@ import {
 } from "react-native"
 import MapView, { Marker } from "react-native-maps"
 import { SafeAreaView } from "react-native-safe-area-context"
-import * as Location from "expo-location"
 import { useCameraPermissions, CameraView, CameraType } from "expo-camera"
 import Modal from "react-native-modal"
 import Icon from "react-native-vector-icons/FontAwesome"
 import { router } from "expo-router"
 
-import { fetchStations, Station } from "../services/stationService"
-import {
-  fetchBicyclesByStationId,
-  Bicycle,
-} from "../services/fetchBicyclesByStation"
-import { AuthContext } from "../context/AuthContext"
 import MenuDrawer from "../components/MenuDrawer"
-import { fetchUserInfo } from "@/services/userService"
-import { addBalance } from "@/services/paymentService"
-import { createRental, updateRental } from "../services/rentalService"
+import { AuthContext } from "../context/AuthContext"
+
+// ХУКИ (пути подстрой под свой проект)
+import { useStations } from "@/hooks/useStations"
+import { useLocation } from "@/hooks/useLocation"
+import { usePayments } from "@/hooks/usePayments"
+
+// типы (если у тебя типы живут в services — импортируй оттуда)
+import type { Station } from "../services/stationService"
+import type { Bicycle } from "../services/fetchBicyclesByStation"
+import { fetchBicyclesByStationId } from "../services/fetchBicyclesByStation"
+import { useRentals } from "@/hooks/useRentals"
 
 const { width, height } = Dimensions.get("window")
 const TARIFF_PER_MINUTE = 1.5
@@ -84,7 +86,7 @@ function CustomQRScanner({
   onClose: () => void
   onBarcodeScanned: (data: string) => void
 }) {
-  const [facing, setFacing] = useState<CameraType>("back")
+  const [facing] = useState<CameraType>("back")
   const [permission, requestPermission] = useCameraPermissions()
   const scannedRef = useRef(false)
 
@@ -110,19 +112,16 @@ function CustomQRScanner({
 
   const handleScan = ({ data }: { data: string }) => {
     if (scannedRef.current) return
-
     scannedRef.current = true
 
     try {
       onBarcodeScanned(data)
-    } catch {
-      // ignore
+    } finally {
+      setTimeout(() => {
+        onClose()
+        scannedRef.current = false
+      }, 500)
     }
-
-    setTimeout(() => {
-      onClose()
-      scannedRef.current = false
-    }, 500)
   }
 
   return (
@@ -146,45 +145,114 @@ function CustomQRScanner({
 export default function HomeScreen() {
   const { userToken, user } = useContext(AuthContext)
 
-  const [isLoading, setIsLoading] = useState(true)
+  // UI-only state
   const [menuOpen, setMenuOpen] = useState(false)
-  const [stations, setStations] = useState<Station[]>([])
   const [selectedStation, setSelectedStation] = useState<Station | null>(null)
+  const [isStationModalVisible, setIsStationModalVisible] = useState(false)
+  const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false)
+  const [isStartScannerVisible, setIsStartScannerVisible] = useState(false)
+  const [isStopScannerVisible, setIsStopScannerVisible] = useState(false)
 
+  // Bikes in station modal (можно вынести в отдельный хук позже)
   const [bicycles, setBicycles] = useState<Bicycle[]>([])
   const [loadingBicycles, setLoadingBicycles] = useState(false)
   const [errorBicycles, setErrorBicycles] = useState<string | null>(null)
 
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false)
-  const [isScannerVisible, setIsScannerVisible] = useState(false)
-
-  const [userBalance, setUserBalance] = useState<number>(100)
+  // Balance modal input
   const [addAmount, setAddAmount] = useState<string>("")
-  const truncatedBalance = userBalance.toString().slice(0, 6)
 
-  const [currentBicycleId, setCurrentBicycleId] = useState<number | null>(null)
-  const [isRented, setIsRented] = useState(false)
-  const [rentalTime, setRentalTime] = useState(0)
-  const [currentRentalId, setCurrentRentalId] = useState<number | null>(null)
-
-  const [userLocation, setUserLocation] = useState({
-    latitude: 59.9343,
-    longitude: 30.3351,
-  })
-  const mapRef = useRef<MapView>(null)
-
+  // QR targets
   const [targetBicycle, setTargetBicycle] = useState<Bicycle | null>(null)
-  const [isStopScannerVisible, setIsStopScannerVisible] = useState(false)
 
+  // modal scroll
   const [scrollOffset, setScrollOffset] = useState(0)
   const flatListRef = useRef<any>(null)
 
+  // Map ref
+  const mapRef = useRef<MapView>(null)
+
+  // --- AUTH redirect ---
   useEffect(() => {
-    if (!userToken) {
-      router.replace("/login")
-    }
+    if (!userToken) router.replace("/login")
   }, [userToken])
+
+  // --- HOOKS ---
+  const {
+    stations,
+    isLoading: stationsLoading,
+    error: stationsError,
+    reload: reloadStations,
+  } = useStations()
+
+  const {
+    location,
+    status: locationStatus,
+    requestPermission,
+    refresh: refreshLocation,
+  } = useLocation()
+
+  const {
+    balance,
+    isLoading: balanceLoading,
+    error: balanceError,
+    addBalance: addBalanceAction,
+    reload: reloadBalance,
+  } = usePayments()
+
+  const {
+    currentRental,
+    startRental,
+    stopRental,
+    isLoading: rentalLoading,
+  } = useRentals()
+
+  // Center map on location
+  useEffect(() => {
+    if (!location) return
+    mapRef.current?.animateToRegion(
+      {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      },
+      800,
+    )
+  }, [location])
+
+  // Ask location permission once (or on demand)
+  useEffect(() => {
+    if (locationStatus === "idle") requestPermission()
+  }, [locationStatus, requestPermission])
+
+  // Update location on app foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") refreshLocation()
+    })
+    return () => sub.remove()
+  }, [refreshLocation])
+
+  // Stations initial load after auth
+  useEffect(() => {
+    if (userToken) reloadStations()
+  }, [userToken, reloadStations])
+
+  // Balance initial load after auth
+  useEffect(() => {
+    if (userToken) reloadBalance()
+  }, [userToken, reloadBalance])
+
+  // Error surfaces (UI-level)
+  useEffect(() => {
+    if (stationsError) Alert.alert("Ошибка", stationsError)
+  }, [stationsError])
+
+  useEffect(() => {
+    if (balanceError) Alert.alert("Ошибка", balanceError)
+  }, [balanceError])
+
+  const toggleMenu = () => setMenuOpen((v) => !v)
 
   const formatTime = (timeInSeconds: number) => {
     const minutes = Math.floor(timeInSeconds / 60)
@@ -194,94 +262,21 @@ export default function HomeScreen() {
       .padStart(2, "0")}`
   }
 
-  const spentAmount = ((rentalTime / 60) * TARIFF_PER_MINUTE).toFixed(2)
+  // derived rental info
+  const rentalTime = currentRental?.secondsElapsed ?? 0
+  const spentAmount = useMemo(() => {
+    return ((rentalTime / 60) * TARIFF_PER_MINUTE).toFixed(2)
+  }, [rentalTime])
 
-  useEffect(() => {
-    let timerId: ReturnType<typeof setInterval> | undefined
-
-    if (isRented) {
-      timerId = setInterval(() => {
-        setRentalTime((prevTime) => prevTime + 1)
-      }, 1000)
-    }
-
-    return () => {
-      if (timerId) clearInterval(timerId)
-    }
-  }, [isRented])
-
-  const updateLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync()
-    if (status !== "granted") {
-      Alert.alert("Ошибка", "Доступ к местоположению не предоставлен")
-      return
-    }
-    const location = await Location.getCurrentPositionAsync({})
-    const { latitude, longitude } = location.coords
-    setUserLocation({ latitude, longitude })
-
-    mapRef.current?.animateToRegion(
-      {
-        latitude,
-        longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      },
-      1000,
-    )
-  }
-
-  useEffect(() => {
-    updateLocation()
-  }, [])
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active") updateLocation()
-    })
-    return () => subscription.remove()
-  }, [])
-
-  const loadStations = async () => {
-    try {
-      const stationData = await fetchStations()
-      setStations(stationData)
-    } catch (error: any) {
-      Alert.alert("Ошибка", error?.message || "Не удалось загрузить станции.")
-    }
-  }
-
-  useEffect(() => {
-    if (userToken) loadStations()
-  }, [userToken])
-
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        if (!userToken) {
-          setIsLoading(false)
-          return
-        }
-
-        const userInfo = await fetchUserInfo()
-        if (userInfo) {
-          setUserBalance(userInfo.balance)
-        } else {
-          Alert.alert("Ошибка", "Не удалось загрузить данные пользователя.")
-        }
-      } catch {
-        Alert.alert("Ошибка", "Произошла ошибка при загрузке данных.")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    initialize()
-  }, [userToken])
+  const truncatedBalance = useMemo(() => {
+    const v = typeof balance === "number" ? balance : 0
+    return v.toString().slice(0, 6)
+  }, [balance])
 
   const handleMarkerPress = async (station: Station) => {
     setSelectedStation(station)
-    setIsModalVisible(true)
+    setIsStationModalVisible(true)
+
     setLoadingBicycles(true)
     setErrorBicycles(null)
 
@@ -289,19 +284,31 @@ export default function HomeScreen() {
       const bicycleData = await fetchBicyclesByStationId(station.id)
       const filtered = bicycleData.filter((bike) => bike.status === "AVAILABLE")
       setBicycles(filtered)
-    } catch (error: any) {
-      Alert.alert(
-        "Ошибка",
-        error?.message || "Не удалось загрузить велосипеды.",
-      )
-      setErrorBicycles("Не удалось загрузить велосипеды.")
+    } catch (e: any) {
+      const msg = e?.message || "Не удалось загрузить велосипеды."
+      setErrorBicycles(msg)
+      Alert.alert("Ошибка", msg)
     } finally {
       setLoadingBicycles(false)
     }
   }
 
-  const toggleMenu = () => {
-    setMenuOpen((v) => !v)
+  const handleAddBalance = async () => {
+    const amount = Number.parseFloat(addAmount)
+    if (Number.isNaN(amount) || amount <= 0) {
+      Alert.alert("Ошибка", "Введите корректную сумму.")
+      return
+    }
+
+    try {
+      await addBalanceAction(amount)
+      setAddAmount("")
+      setIsBalanceModalVisible(false)
+      await reloadBalance()
+      Alert.alert("Успех", `Баланс пополнен на ${amount} ₽`)
+    } catch (e: any) {
+      Alert.alert("Ошибка", e?.message || "Не удалось пополнить баланс.")
+    }
   }
 
   const renderBicycleItem = ({ item }: { item: Bicycle }) => (
@@ -314,20 +321,17 @@ export default function HomeScreen() {
       <TouchableOpacity
         style={styles.rentButton}
         onPress={() => {
-          if (!userToken || user === null) {
+          if (!userToken || user == null) {
             Alert.alert("Ошибка", "Пользователь не авторизован.")
             return
           }
           if (!selectedStation?.id) {
-            Alert.alert(
-              "Ошибка",
-              "Не удалось определить станцию начала аренды.",
-            )
+            Alert.alert("Ошибка", "Не удалось определить станцию.")
             return
           }
-          setIsModalVisible(false)
+          setIsStationModalVisible(false)
           setTargetBicycle(item)
-          setIsScannerVisible(true)
+          setIsStartScannerVisible(true)
         }}
       >
         <Text style={styles.rentButtonText}>Арендовать</Text>
@@ -335,8 +339,35 @@ export default function HomeScreen() {
     </View>
   )
 
-  const handleStopStationScanned = (data: string) => {
-    const stationId = parseInt(data, 10)
+  const handleStartBarcodeScanned = async (data: string) => {
+    if (!targetBicycle) {
+      Alert.alert("Ошибка", "Не выбран велосипед.")
+      return
+    }
+    if (data !== targetBicycle.id.toString()) {
+      Alert.alert("Ошибка", "Неверный QR код. Попробуйте снова.")
+      return
+    }
+
+    if (!userToken || user == null || !selectedStation) {
+      Alert.alert("Ошибка", "Нет пользователя или станции.")
+      return
+    }
+
+    setIsStartScannerVisible(false)
+
+    try {
+      await startRental(targetBicycle.id, selectedStation.id)
+      Alert.alert("Успех", "Аренда начата!")
+      // синхронизация UI
+      await reloadStations()
+    } catch (e: any) {
+      Alert.alert("Ошибка", e?.message || "Не удалось начать аренду.")
+    }
+  }
+
+  const handleStopStationScanned = async (data: string) => {
+    const stationId = Number.parseInt(data, 10)
     if (Number.isNaN(stationId)) {
       Alert.alert("Ошибка", "QR код не соответствует идентификатору станции.")
       return
@@ -344,91 +375,21 @@ export default function HomeScreen() {
 
     setIsStopScannerVisible(false)
 
-    if (currentRentalId === null) {
-      Alert.alert("Ошибка", "Аренда не найдена.")
+    if (!currentRental) {
+      Alert.alert("Ошибка", "Нет активной аренды.")
       return
     }
 
-    if (user == null || currentBicycleId == null) {
-      Alert.alert(
-        "Ошибка",
-        "Нет данных текущей аренды (велосипед/пользователь).",
-      )
-      return
-    }
-
+    // cost лучше считать на сервере; но раз у тебя сейчас тариф клиентский — передадим cost
     const calculatedCost = Math.round((rentalTime / 60) * TARIFF_PER_MINUTE)
 
-    updateRental(
-      currentRentalId,
-      user,
-      currentBicycleId,
-      stationId,
-      calculatedCost,
-    )
-      .then((updatedRental) => {
-        Alert.alert(
-          "Аренда остановлена",
-          `Итоговый расход: ${updatedRental.cost} ₽`,
-        )
-        setIsRented(false)
-        setRentalTime(0)
-        setCurrentRentalId(null)
-        setCurrentBicycleId(null)
-      })
-      .catch((err: any) => {
-        Alert.alert("Ошибка", err?.message || "Не удалось завершить аренду.")
-      })
-  }
-
-  const handleAddBalance = async () => {
-    const amount = parseFloat(addAmount)
-    if (Number.isNaN(amount) || amount <= 0) {
-      Alert.alert("Ошибка", "Введите корректную сумму.")
-      return
-    }
-
     try {
-      await addBalance(amount)
-      setUserBalance((prevBalance) => prevBalance + amount)
-      setAddAmount("")
-      setIsBalanceModalVisible(false)
-      Alert.alert("Успех", `Баланс пополнен на ${amount} ₽`)
-    } catch (error: any) {
-      const errorMessage =
-        error?.response?.data?.message ||
-        (error?.response?.status === 403
-          ? "У вас нет доступа для выполнения этого действия."
-          : "Не удалось пополнить баланс. Повторите попытку позже.")
-      Alert.alert("Ошибка", errorMessage)
-    }
-  }
-
-  const handleBarcodeScanned = (data: string) => {
-    if (targetBicycle && data === targetBicycle.id.toString()) {
-      setIsScannerVisible(false)
-
-      if (!userToken || user == null || !selectedStation) {
-        Alert.alert(
-          "Ошибка",
-          "Пользователь не авторизован или отсутствует выбранная станция.",
-        )
-        return
-      }
-
-      createRental(user, targetBicycle.id, selectedStation.id)
-        .then((rentalData) => {
-          setCurrentRentalId(rentalData.id)
-          setCurrentBicycleId(targetBicycle.id)
-          setIsRented(true)
-          setRentalTime(0)
-          Alert.alert("Успех", "Аренда начата!")
-        })
-        .catch((err: any) => {
-          Alert.alert("Ошибка", err?.message || "Не удалось начать аренду.")
-        })
-    } else {
-      Alert.alert("Ошибка", "Неверный QR код. Попробуйте снова.")
+      await stopRental(currentRental.id, stationId, calculatedCost)
+      Alert.alert("Аренда остановлена", `Итоговый расход: ${calculatedCost} ₽`)
+      // синхронизация
+      await Promise.all([reloadStations(), reloadBalance()])
+    } catch (e: any) {
+      Alert.alert("Ошибка", e?.message || "Не удалось завершить аренду.")
     }
   }
 
@@ -436,7 +397,10 @@ export default function HomeScreen() {
     setScrollOffset(event.nativeEvent.contentOffset.y)
   }
 
-  if (isLoading) {
+  // общий лоадинг экрана: auth уже проверили, дальше можно по частям
+  const globalLoading = stationsLoading || balanceLoading
+
+  if (globalLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <ActivityIndicator size="large" color="#0000ff" />
@@ -444,6 +408,9 @@ export default function HomeScreen() {
       </SafeAreaView>
     )
   }
+
+  const mapLatitude = location?.latitude ?? 59.9343
+  const mapLongitude = location?.longitude ?? 30.3351
 
   return (
     <MenuDrawer menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
@@ -469,8 +436,8 @@ export default function HomeScreen() {
             ref={mapRef}
             style={styles.map}
             region={{
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude,
+              latitude: mapLatitude,
+              longitude: mapLongitude,
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             }}
@@ -479,7 +446,8 @@ export default function HomeScreen() {
             scrollEnabled={!menuOpen}
             zoomEnabled={!menuOpen}
           >
-            <AnimatedUpdateButton onPress={loadStations} />
+            <AnimatedUpdateButton onPress={reloadStations} />
+
             {stations.map((station) => (
               <Marker
                 key={station.id}
@@ -499,25 +467,35 @@ export default function HomeScreen() {
 
         <View style={styles.infoContainer}>
           <Text style={styles.infoHeader}>Статус аренды</Text>
-          <Text style={styles.infoText}>Время: {formatTime(rentalTime)}</Text>
-          <Text style={styles.infoText}>Сумма: {spentAmount} ₽</Text>
-          {isRented && (
-            <TouchableOpacity
-              style={styles.stopButton}
-              onPress={() => setIsStopScannerVisible(true)}
-            >
-              <Text style={styles.stopButtonText}>
-                Сканировать для завершения аренды
+
+          {currentRental ? (
+            <>
+              <Text style={styles.infoText}>
+                Время: {formatTime(rentalTime)}
               </Text>
-            </TouchableOpacity>
+              <Text style={styles.infoText}>Сумма: {spentAmount} ₽</Text>
+
+              <TouchableOpacity
+                style={styles.stopButton}
+                onPress={() => setIsStopScannerVisible(true)}
+                disabled={rentalLoading}
+              >
+                <Text style={styles.stopButtonText}>
+                  Сканировать для завершения аренды
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.infoText}>Активной аренды нет</Text>
           )}
         </View>
 
+        {/* Station modal */}
         <Modal
-          isVisible={isModalVisible}
+          isVisible={isStationModalVisible}
           swipeDirection={["down"]}
-          onSwipeComplete={() => setIsModalVisible(false)}
-          onBackdropPress={() => setIsModalVisible(false)}
+          onSwipeComplete={() => setIsStationModalVisible(false)}
+          onBackdropPress={() => setIsStationModalVisible(false)}
           swipeThreshold={100}
           scrollTo={(node) => {
             flatListRef.current = node
@@ -532,7 +510,7 @@ export default function HomeScreen() {
               <Text style={styles.modalTitle}>
                 Велосипеды на станции: {selectedStation?.name}
               </Text>
-              <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+              <TouchableOpacity onPress={() => setIsStationModalVisible(false)}>
                 <Text style={styles.closeButton}>×</Text>
               </TouchableOpacity>
             </View>
@@ -556,6 +534,7 @@ export default function HomeScreen() {
           </SafeAreaView>
         </Modal>
 
+        {/* Balance modal */}
         <Modal
           isVisible={isBalanceModalVisible}
           onBackdropPress={() => setIsBalanceModalVisible(false)}
@@ -566,6 +545,7 @@ export default function HomeScreen() {
             style={styles.balanceModalContainer}
           >
             <Text style={styles.modalTitle}>Пополнить баланс</Text>
+
             <TextInput
               style={styles.input}
               placeholder="Введите сумму"
@@ -573,20 +553,27 @@ export default function HomeScreen() {
               value={addAmount}
               onChangeText={setAddAmount}
             />
-            <Button title="Пополнить" onPress={handleAddBalance} />
+
+            <Button
+              title={balanceLoading ? "..." : "Пополнить"}
+              onPress={handleAddBalance}
+              disabled={balanceLoading}
+            />
             <View style={{ height: 10 }} />
           </KeyboardAvoidingView>
         </Modal>
 
-        {isScannerVisible && (
+        {/* Start scanner */}
+        {isStartScannerVisible && (
           <View style={styles.scannerModalContainer}>
             <CustomQRScanner
-              onClose={() => setIsScannerVisible(false)}
-              onBarcodeScanned={handleBarcodeScanned}
+              onClose={() => setIsStartScannerVisible(false)}
+              onBarcodeScanned={handleStartBarcodeScanned}
             />
           </View>
         )}
 
+        {/* Stop scanner */}
         {isStopScannerVisible && (
           <View style={styles.scannerModalContainer}>
             <CustomQRScanner
@@ -702,6 +689,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: "#333",
+    flex: 1,
+    paddingRight: 10,
   },
   closeButton: {
     fontSize: 24,
