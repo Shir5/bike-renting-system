@@ -1,29 +1,30 @@
-import React, { memo, useEffect, useRef } from "react"
-import { StyleSheet, View } from "react-native"
-import MapView, { Marker, Region } from "react-native-maps"
+import React, { memo, useEffect, useRef } from "react";
+import { StyleSheet, View } from "react-native";
+import type { Region } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 
-import type { Station } from "@/services/stationService"
+import type { Station } from "@/services/stationService";
 
-export type LatLng = { latitude: number; longitude: number }
+export type LatLng = { latitude: number; longitude: number };
 
 type StationsMapProps = {
-  stations: Station[]
-  userLocation: LatLng | null
+  stations: Station[];
+  userLocation: LatLng | null;
 
   // UI flags
-  isMenuOpen?: boolean
+  isMenuOpen?: boolean;
 
   // callbacks
-  onStationPress: (station: Station) => void
-  onReloadPress?: () => void
+  onStationPress: (station: Station) => void;
+  onReloadPress?: () => void;
 
   // optional customization
-  defaultCenter?: LatLng
-  delta?: { latitudeDelta: number; longitudeDelta: number }
-}
+  defaultCenter?: LatLng;
+  delta?: { latitudeDelta: number; longitudeDelta: number };
+};
 
-const DEFAULT_CENTER: LatLng = { latitude: 59.9343, longitude: 30.3351 }
-const DEFAULT_DELTA = { latitudeDelta: 0.05, longitudeDelta: 0.05 }
+const DEFAULT_CENTER: LatLng = { latitude: 59.9343, longitude: 30.3351 };
+const DEFAULT_DELTA = { latitudeDelta: 0.05, longitudeDelta: 0.05 };
 
 export const StationsMap = memo(function StationsMap({
   stations,
@@ -34,11 +35,11 @@ export const StationsMap = memo(function StationsMap({
   defaultCenter = DEFAULT_CENTER,
   delta = DEFAULT_DELTA,
 }: StationsMapProps) {
-  const mapRef = useRef<MapView>(null)
+  const mapRef = useRef<MapView>(null);
 
   // Центрирование при обновлении координат пользователя
   useEffect(() => {
-    if (!userLocation) return
+    if (!userLocation) return;
 
     mapRef.current?.animateToRegion(
       {
@@ -48,15 +49,15 @@ export const StationsMap = memo(function StationsMap({
         longitudeDelta: delta.longitudeDelta,
       },
       800,
-    )
-  }, [userLocation, delta.latitudeDelta, delta.longitudeDelta])
+    );
+  }, [userLocation, delta.latitudeDelta, delta.longitudeDelta]);
 
   const region: Region = {
     latitude: userLocation?.latitude ?? defaultCenter.latitude,
     longitude: userLocation?.longitude ?? defaultCenter.longitude,
     latitudeDelta: delta.latitudeDelta,
     longitudeDelta: delta.longitudeDelta,
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -92,8 +93,8 @@ export const StationsMap = memo(function StationsMap({
         </View>
       ) : null}
     </View>
-  )
-})
+  );
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -105,4 +106,4 @@ const styles = StyleSheet.create({
     right: 10,
     zIndex: 1000,
   },
-})
+});

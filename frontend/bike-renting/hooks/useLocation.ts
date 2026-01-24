@@ -1,112 +1,80 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { AppState, AppStateStatus } from "react-native"
-import * as Location from "expo-location"
+import { useCallback, useEffect, useMemo, useState } from "react";
+import * as Location from "expo-location";
+import type { AppStateStatus } from "react-native";
+import { AppState } from "react-native";
 
-export type LocationState = {
-  latitude: number
-  longitude: number
-} | null
+export type LocationStatus =
+  | "unknown"
+  | "granted"
+  | "denied"
+  | "blocked"
+  | "requesting"
+  | "error";
 
-type Status = "idle" | "granted" | "denied"
+export type UserLocation = { latitude: number; longitude: number } | null;
 
-export const useLocation = (opts?: {
-  autoStart?: boolean
-  refreshOnAppActive?: boolean
-  accuracy?: Location.LocationAccuracy
-}) => {
-  const {
-    autoStart = true,
-    refreshOnAppActive = true,
-    accuracy = Location.LocationAccuracy.Balanced,
-  } = opts ?? {}
+export function useLocation(options?: { watchAppState?: boolean }) {
+  const [status, setStatus] = useState<LocationStatus>("unknown");
+  const [location, setLocation] = useState<UserLocation>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [location, setLocation] = useState<LocationState>(null)
-  const [status, setStatus] = useState<Status>("idle")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const requestPermission = useCallback(async () => {
+    setStatus("requesting");
+    setError(null);
 
-  // защита от параллельных refresh
-  const inFlightRef = useRef<Promise<LocationState> | null>(null)
+    const res = await Location.requestForegroundPermissionsAsync();
 
-  const requestPermission = useCallback(async (): Promise<Status> => {
+    if (res.status === "granted") {
+      setStatus("granted");
+      return true;
+    }
+
+    // iOS/Android: если пользователь запретил, обычно это "denied".
+    // "blocked" трактуем как "не дадут без Settings" (heuristic).
+    setStatus(res.canAskAgain ? "denied" : "blocked");
+    return false;
+  }, []);
+
+  const refresh = useCallback(async () => {
     try {
-      setError(null)
+      setError(null);
 
-      // Сначала проверим текущее состояние (не всегда нужно заново спрашивать)
-      const current = await Location.getForegroundPermissionsAsync()
-      if (current.status === "granted") {
-        setStatus("granted")
-        return "granted"
+      const perm = await Location.getForegroundPermissionsAsync();
+      if (perm.status !== "granted") {
+        setStatus(perm.canAskAgain ? "denied" : "blocked");
+        setLocation(null);
+        return false;
       }
 
-      const req = await Location.requestForegroundPermissionsAsync()
-      if (req.status !== "granted") {
-        setStatus("denied")
-        setError("Доступ к местоположению не предоставлен")
-        return "denied"
-      }
-
-      setStatus("granted")
-      return "granted"
-    } catch {
-      setStatus("idle")
-      setError("Не удалось запросить разрешение на геолокацию")
-      return "idle"
+      setStatus("granted");
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setLocation({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      });
+      return true;
+    } catch (e: any) {
+      setStatus("error");
+      setError(e?.message ?? "Location error");
+      return false;
     }
-  }, [])
+  }, []);
 
-  const refresh = useCallback(async (): Promise<LocationState> => {
-    if (inFlightRef.current) return inFlightRef.current
-
-    inFlightRef.current = (async () => {
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const perm = await requestPermission()
-        if (perm !== "granted") {
-          // НЕ throw — просто возвращаем null и записываем error
-          return null
-        }
-
-        const pos = await Location.getCurrentPositionAsync({ accuracy })
-
-        const next = {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        }
-
-        setLocation(next)
-        return next
-      } catch {
-        setError("Не удалось получить геолокацию")
-        return null
-      } finally {
-        setIsLoading(false)
-        inFlightRef.current = null
-      }
-    })()
-
-    return inFlightRef.current
-  }, [accuracy, requestPermission])
-
-  // автостарт
+  // Опционально: обновлять координаты при возврате приложения в active
   useEffect(() => {
-    if (!autoStart) return
-    void refresh()
-  }, [autoStart, refresh])
+    if (!options?.watchAppState) return;
 
-  // AppState -> refresh при возврате в active
-  useEffect(() => {
-    if (!refreshOnAppActive) return
+    const onChange = async (next: AppStateStatus) => {
+      if (next === "active") await refresh();
+    };
+    const sub = AppState.addEventListener("change", onChange);
+    return () => sub.remove();
+  }, [options?.watchAppState, refresh]);
 
-    const onChange = (s: AppStateStatus) => {
-      if (s === "active") void refresh()
-    }
-
-    const sub = AppState.addEventListener("change", onChange)
-    return () => sub.remove()
-  }, [refreshOnAppActive, refresh])
-
-  return { location, status, isLoading, error, requestPermission, refresh }
+  return useMemo(
+    () => ({ status, location, error, requestPermission, refresh }),
+    [status, location, error, requestPermission, refresh],
+  );
 }

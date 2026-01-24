@@ -17,7 +17,8 @@ import {
 } from "react-native"
 import MapView, { Marker } from "react-native-maps"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { useCameraPermissions, CameraView, CameraType } from "expo-camera"
+import type { CameraType } from "expo-camera"
+import { useCameraPermissions, CameraView } from "expo-camera"
 import Modal from "react-native-modal"
 import Icon from "react-native-vector-icons/FontAwesome"
 import { router } from "expo-router"
@@ -37,6 +38,7 @@ import type { Bicycle } from "../services/fetchBicyclesByStation"
 import { fetchBicyclesByStationId } from "../services/fetchBicyclesByStation"
 import { StationsMap } from "@/components/StationsMap"
 import { QrScannerModal } from "@/components/QrScannerModal"
+import { PermissionDeniedScreen } from "@/components/PermissionDeniedScreen"
 
 const { width, height } = Dimensions.get("window")
 const TARIFF_PER_MINUTE = 1.5
@@ -191,7 +193,7 @@ export default function HomeScreen() {
     refresh: refreshLocation,
     error: locationError,
   } = useLocation({
-    autoStart: true,
+    autoStart: false,
     refreshOnAppActive: true,
   })
 
@@ -377,6 +379,38 @@ export default function HomeScreen() {
 
   const handleScroll = (event: any) => {
     setScrollOffset(event.nativeEvent.contentOffset.y)
+  }
+  if (locationStatus === "denied" || locationStatus === "blocked") {
+    return (
+      <MenuDrawer menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.burgerMenuPlaceholder}>
+              <TouchableOpacity onPress={toggleMenu}>
+                <Text style={{ fontSize: 24 }}>☰</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.title}>HealthyRide</Text>
+          </View>
+
+          <PermissionDeniedScreen
+            title="Нет доступа к геолокации"
+            description="Карта и станции доступны, но без определения вашего местоположения и центрирования на вас. Разрешите доступ в настройках или запросите снова."
+            canRequestAgain={locationStatus === "denied"}
+            onRequestAgain={async () => {
+              const ok = await requestPermission()
+              if (ok) await refreshLocation()
+            }}
+          />
+        </SafeAreaView>
+      </MenuDrawer>
+    )
+  }
+
+  // 2) Первый вход: ничего не запрашиваем сами — предлагаем кнопку
+  if (locationStatus === "unknown") {
+    // ничего страшного: карта будет центрироваться на дефолт, но без user dot
+    // можешь либо показать баннер, либо оставить как есть и дать кнопку в UI
   }
 
   const globalLoading = stationsLoading || balanceLoading
