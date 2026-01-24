@@ -36,6 +36,7 @@ import type { Station } from "../services/stationService"
 import type { Bicycle } from "../services/fetchBicyclesByStation"
 import { fetchBicyclesByStationId } from "../services/fetchBicyclesByStation"
 import { StationsMap } from "@/components/StationsMap"
+import { QrScannerModal } from "@/components/QrScannerModal"
 
 const { width, height } = Dimensions.get("window")
 const TARIFF_PER_MINUTE = 1.5
@@ -533,9 +534,11 @@ export default function HomeScreen() {
         {/* Start scanner */}
         {isStartScannerVisible && (
           <View style={styles.scannerModalContainer}>
-            <CustomQRScanner
+            <QrScannerModal
+              visible={isStartScannerVisible}
+              title="Сканируй QR велосипеда"
               onClose={() => setIsStartScannerVisible(false)}
-              onBarcodeScanned={handleStartBarcodeScanned}
+              onScan={handleStartBarcodeScanned}
             />
           </View>
         )}
@@ -543,9 +546,11 @@ export default function HomeScreen() {
         {/* Stop scanner */}
         {isStopScannerVisible && (
           <View style={styles.scannerModalContainer}>
-            <CustomQRScanner
+            <QrScannerModal
+              visible={isStopScannerVisible}
+              title="Сканируй QR станции"
               onClose={() => setIsStopScannerVisible(false)}
-              onBarcodeScanned={handleStopStationScanned}
+              onScan={handleStopStationScanned}
             />
           </View>
         )}
