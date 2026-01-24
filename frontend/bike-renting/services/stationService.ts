@@ -1,7 +1,10 @@
 import { api } from "@/api/client"
+import { z } from "zod"
+import { schemas } from "@/api/generated"
 
 const STATIONS_PATH = "/stations"
 
+// UI-модель
 export type Station = {
   id: number
   name: string
@@ -10,27 +13,25 @@ export type Station = {
   availableBikes: number
 }
 
-export type CoordinatesDto = {
-  latitude: number
-  longitude: number
-}
+// типы запросов — из generated (zod -> infer)
+export type CoordinatesDto = z.infer<typeof schemas.CoordinatesDto>
+export type CreateStationRequest = z.infer<typeof schemas.CreateStationRequest>
 
-export type CreateStationRequest = {
-  name: string
-  coordinates: CoordinatesDto
-}
+// локальные схемы ответа (временно, потому что generated response = void)
+const StationBackendDtoSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  coordinates: schemas.CoordinatesDto,
+  availableBicycles: z.number().int(),
+})
 
-type PagedResponse<T> = {
-  content: T[]
-  totalPages: number
-}
+type StationBackendDto = z.infer<typeof StationBackendDtoSchema>
 
-type StationBackendDto = {
-  id: number
-  name: string
-  coordinates: { latitude: number; longitude: number }
-  availableBicycles: number
-}
+const PagedResponseSchema = <T extends z.ZodTypeAny>(item: T) =>
+  z.object({
+    content: z.array(item),
+    totalPages: z.number().int(),
+  })
 
 const mapStation = (station: StationBackendDto): Station => ({
   id: station.id,
@@ -40,7 +41,6 @@ const mapStation = (station: StationBackendDto): Station => ({
   availableBikes: station.availableBicycles,
 })
 
-
 export const fetchStations = async (): Promise<Station[]> => {
   let currentPage = 0
   const pageSize = 50
@@ -48,45 +48,34 @@ export const fetchStations = async (): Promise<Station[]> => {
   const allStations: Station[] = []
 
   while (currentPage < totalPages) {
-    console.log(
-      `[fetchStations] GET ${STATIONS_PATH} page=${currentPage} size=${pageSize}`,
-    )
-
-    const res = await api.get<PagedResponse<StationBackendDto>>(STATIONS_PATH, {
+    const res = await api.get(STATIONS_PATH, {
       params: { page: currentPage, size: pageSize },
     })
 
-    const { content, totalPages: fetchedTotalPages } = res.data
+    const page = PagedResponseSchema(StationBackendDtoSchema).parse(res.data)
 
-    if (!Array.isArray(content)) {
-      throw new Error("Неверный формат данных: content не является массивом.")
-    }
-
-    allStations.push(...content.map(mapStation))
-    totalPages = fetchedTotalPages ?? totalPages
+    allStations.push(...page.content.map(mapStation))
+    totalPages = page.totalPages
     currentPage += 1
   }
 
-  console.log("[fetchStations] All stations fetched:", allStations)
   return allStations
 }
 
 export const createStation = async (
   request: CreateStationRequest,
 ): Promise<Station> => {
-  console.log("[createStation] POST", STATIONS_PATH, "payload:", request)
+  // валидируем request схемой из generated
+  const payload = schemas.CreateStationRequest.parse(request)
 
-  const res = await api.post<StationBackendDto>(STATIONS_PATH, request)
+  const res = await api.post(STATIONS_PATH, payload)
 
-  console.log("[createStation] response status:", res.status)
-  console.log("[createStation] response data:", res.data)
+  // валидируем ответ локальной схемой
+  const dto = StationBackendDtoSchema.parse(res.data)
 
-  return mapStation(res.data)
+  return mapStation(dto)
 }
 
-
 export const deleteStation = async (stationId: number): Promise<void> => {
-  console.log(`[deleteStation] DELETE ${STATIONS_PATH}/${stationId}`)
-
   await api.delete(`${STATIONS_PATH}/${stationId}`)
 }
