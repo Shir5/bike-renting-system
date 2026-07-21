@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bike_renting}
+      POSTGRES_USER: ${POSTGRES_USER:-bike_renting}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bike_renting}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-bike_renting}
+      DATABASE_USERNAME: ${POSTGRES_USER:-bike_renting}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-bike_renting}
+      JWT_SECRET: ${JWT_SECRET:-eDNERjdHbUNrWE5aV1BIZkxKMnNBWUhCeE11Slg1ZnRFejc5WXJUcWhLQU5YSkJzQ25EU2FZS2JGdTI5TjhMVDN2}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
