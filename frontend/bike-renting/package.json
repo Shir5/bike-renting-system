@@ -96,7 +96,7 @@
     "@types/react-native-vector-icons": "^6.4.18",
     "@types/react-test-renderer": "^19.1.0",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
-    "@typescript-eslint/parser": "^8.53.1",
+    "@typescript-eslint/parser": "^8.65.0",
     "detox": "^20.46.3",
     "eslint-config-expo": "~10.0.0",
     "eslint-config-prettier": "^9.1.2",
