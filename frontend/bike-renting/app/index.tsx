@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react"
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -13,57 +13,56 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  StatusBar,
-} from "react-native"
-import MapView, { Marker } from "react-native-maps"
-import { SafeAreaView } from "react-native-safe-area-context"
-import type { CameraType } from "expo-camera"
-import { useCameraPermissions, CameraView } from "expo-camera"
-import Modal from "react-native-modal"
-import Icon from "react-native-vector-icons/FontAwesome"
-import { router } from "expo-router"
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Modal from "react-native-modal";
+import Icon from "react-native-vector-icons/FontAwesome";
+import { router } from "expo-router";
 
-import MenuDrawer from "../components/MenuDrawer"
-import { AuthContext } from "../context/AuthContext"
+import MenuDrawer from "../components/MenuDrawer";
+import { AuthContext } from "../context/AuthContext";
 
 // ХУКИ
-import { useStations } from "@/hooks/useStations"
-import { useLocation } from "@/hooks/useLocation"
-import { usePayments } from "@/hooks/usePayments"
-import { useRentals } from "@/hooks/useRentals"
+import { useStations } from "@/hooks/useStations";
+import { useLocation } from "@/hooks/useLocation";
+import { usePayments } from "@/hooks/usePayments";
+import { useRentals } from "@/hooks/useRentals";
 
 // типы
-import type { Station } from "../services/stationService"
-import type { Bicycle } from "../services/fetchBicyclesByStation"
-import { fetchBicyclesByStationId } from "../services/fetchBicyclesByStation"
-import { StationsMap } from "@/components/StationsMap"
-import { QrScannerModal } from "@/components/QrScannerModal"
-import { PermissionDeniedScreen } from "@/components/PermissionDeniedScreen"
+import type { Station } from "../services/stationService";
+import type { Bicycle } from "../services/fetchBicyclesByStation";
+import { fetchBicyclesByStationId } from "../services/fetchBicyclesByStation";
+import { StationsMap } from "@/components/StationsMap";
+import { QrScannerModal } from "@/components/QrScannerModal";
+import { PermissionDeniedScreen } from "@/components/PermissionDeniedScreen";
+import { extractErrorMessage } from "@/api/errors";
 
-const { width, height } = Dimensions.get("window")
-const TARIFF_PER_MINUTE = 1.5
+const { width, height } = Dimensions.get("window");
+const TARIFF_PER_MINUTE = 1.5;
 
 const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
-  const spinValue = useRef(new Animated.Value(0)).current
+  const spinValue = useRef(new Animated.Value(0)).current;
 
   const spinAnimation = () => {
-    spinValue.setValue(0)
+    spinValue.setValue(0);
     Animated.timing(spinValue, {
       toValue: 1,
       duration: 1000,
       useNativeDriver: true,
-    }).start()
-  }
+    }).start();
+  };
 
   const handlePress = () => {
-    spinAnimation()
-    onPress()
-  }
+    spinAnimation();
+    onPress();
+  };
 
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
-  })
+  });
 
   return (
     <TouchableOpacity
@@ -72,6 +71,8 @@ const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
       activeOpacity={0.7}
     >
       <Animated.Image
+        // React Native resolves static assets through compile-time require().
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         source={require("../assets/images/reload.png")}
         style={[
           styles.updateButton,
@@ -79,102 +80,39 @@ const AnimatedUpdateButton = ({ onPress }: { onPress: () => void }) => {
         ]}
       />
     </TouchableOpacity>
-  )
-}
-
-function CustomQRScanner({
-  onClose,
-  onBarcodeScanned,
-}: {
-  onClose: () => void
-  onBarcodeScanned: (data: string) => void
-}) {
-  const [facing] = useState<CameraType>("back")
-  const [permission, requestPermission] = useCameraPermissions()
-  const scannedRef = useRef(false)
-
-  useEffect(() => {
-    scannedRef.current = false
-  }, [])
-
-  if (!permission) return <View />
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.scannerContainer}>
-        <Text style={styles.scannerMessage}>
-          We need your permission to show the camera
-        </Text>
-        <Button onPress={requestPermission} title="Grant Permission" />
-        <TouchableOpacity style={styles.scannerCloseButton} onPress={onClose}>
-          <Text style={styles.scannerCloseText}>× Close</Text>
-        </TouchableOpacity>
-      </View>
-    )
-  }
-
-  const handleScan = ({ data }: { data: string }) => {
-    if (scannedRef.current) return
-    scannedRef.current = true
-
-    try {
-      onBarcodeScanned(data)
-    } finally {
-      setTimeout(() => {
-        onClose()
-        scannedRef.current = false
-      }, 500)
-    }
-  }
-
-  return (
-    <View style={styles.scannerContainer}>
-      {Platform.OS === "ios" && <StatusBar hidden />}
-      <CameraView
-        style={styles.scannerCamera}
-        facing={facing}
-        onBarcodeScanned={handleScan}
-      >
-        <View style={styles.scannerButtonContainer}>
-          <TouchableOpacity style={styles.scannerButton} onPress={onClose}>
-            <Text style={styles.scannerText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </CameraView>
-    </View>
-  )
-}
+  );
+};
 
 export default function HomeScreen() {
-  const { userToken, user } = useContext(AuthContext)
+  const { userToken, user } = useContext(AuthContext);
 
   // UI-only state
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null)
-  const [isStationModalVisible, setIsStationModalVisible] = useState(false)
-  const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false)
-  const [isStartScannerVisible, setIsStartScannerVisible] = useState(false)
-  const [isStopScannerVisible, setIsStopScannerVisible] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+  const [isStationModalVisible, setIsStationModalVisible] = useState(false);
+  const [isBalanceModalVisible, setIsBalanceModalVisible] = useState(false);
+  const [isStartScannerVisible, setIsStartScannerVisible] = useState(false);
+  const [isStopScannerVisible, setIsStopScannerVisible] = useState(false);
 
   // Bikes in station modal
-  const [bicycles, setBicycles] = useState<Bicycle[]>([])
-  const [loadingBicycles, setLoadingBicycles] = useState(false)
-  const [errorBicycles, setErrorBicycles] = useState<string | null>(null)
+  const [bicycles, setBicycles] = useState<Bicycle[]>([]);
+  const [loadingBicycles, setLoadingBicycles] = useState(false);
+  const [errorBicycles, setErrorBicycles] = useState<string | null>(null);
 
   // Balance modal input
-  const [addAmount, setAddAmount] = useState<string>("")
+  const [addAmount, setAddAmount] = useState<string>("");
 
   // QR targets
-  const [targetBicycle, setTargetBicycle] = useState<Bicycle | null>(null)
+  const [targetBicycle, setTargetBicycle] = useState<Bicycle | null>(null);
 
   // modal scroll
-  const [scrollOffset, setScrollOffset] = useState(0)
-  const flatListRef = useRef<any>(null)
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const flatListRef = useRef<FlatList<Bicycle> | null>(null);
 
   // --- AUTH redirect ---
   useEffect(() => {
-    if (!userToken) router.replace("/login")
-  }, [userToken])
+    if (!userToken) router.replace("/login");
+  }, [userToken]);
 
   // --- HOOKS ---
   const {
@@ -182,9 +120,8 @@ export default function HomeScreen() {
     isLoading: stationsLoading,
     error: stationsError,
     reload: reloadStations,
-  } = useStations()
+  } = useStations();
 
-  // ВАЖНО: AppState и autoStart теперь внутри useLocation
   const {
     location,
     status: locationStatus,
@@ -193,9 +130,8 @@ export default function HomeScreen() {
     refresh: refreshLocation,
     error: locationError,
   } = useLocation({
-    autoStart: false,
-    refreshOnAppActive: true,
-  })
+    watchAppState: true,
+  });
 
   const {
     balance,
@@ -203,100 +139,102 @@ export default function HomeScreen() {
     error: balanceError,
     addBalance: addBalanceAction,
     reload: reloadBalance,
-  } = usePayments()
+  } = usePayments();
 
   const {
     currentRental,
     startRental,
     stopRental,
     isLoading: rentalLoading,
-  } = useRentals()
+  } = useRentals();
 
   // Stations initial load after auth
   useEffect(() => {
-    if (userToken) reloadStations()
-  }, [userToken, reloadStations])
+    if (userToken) reloadStations();
+  }, [userToken, reloadStations]);
 
   // Balance initial load after auth
   useEffect(() => {
-    if (userToken) reloadBalance()
-  }, [userToken, reloadBalance])
+    if (userToken) reloadBalance();
+  }, [userToken, reloadBalance]);
 
   // Error surfaces (UI-level)
   useEffect(() => {
-    if (stationsError) Alert.alert("Ошибка", stationsError)
-  }, [stationsError])
+    if (stationsError) Alert.alert("Ошибка", stationsError);
+  }, [stationsError]);
 
   useEffect(() => {
-    if (balanceError) Alert.alert("Ошибка", balanceError)
-  }, [balanceError])
+    if (balanceError) Alert.alert("Ошибка", balanceError);
+  }, [balanceError]);
 
   useEffect(() => {
     if (locationError) {
       // не спамим алертами; при желании можно убрать или заменить на toast
       // Alert.alert("Геолокация", locationError)
-      console.log("[locationError]", locationError)
+      console.log("[locationError]", locationError);
     }
-  }, [locationError])
+  }, [locationError]);
 
-  const toggleMenu = () => setMenuOpen((v) => !v)
+  const toggleMenu = () => setMenuOpen((v) => !v);
 
   const formatTime = (timeInSeconds: number) => {
-    const minutes = Math.floor(timeInSeconds / 60)
-    const seconds = timeInSeconds % 60
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = timeInSeconds % 60;
     return `${minutes.toString().padStart(2, "0")}:${seconds
       .toString()
-      .padStart(2, "0")}`
-  }
+      .padStart(2, "0")}`;
+  };
 
   // derived rental info
-  const rentalTime = currentRental?.secondsElapsed ?? 0
+  const rentalTime = currentRental?.secondsElapsed ?? 0;
   const spentAmount = useMemo(() => {
-    return ((rentalTime / 60) * TARIFF_PER_MINUTE).toFixed(2)
-  }, [rentalTime])
+    return ((rentalTime / 60) * TARIFF_PER_MINUTE).toFixed(2);
+  }, [rentalTime]);
 
   const truncatedBalance = useMemo(() => {
-    const v = typeof balance === "number" ? balance : 0
-    return v.toString().slice(0, 6)
-  }, [balance])
+    const v = typeof balance === "number" ? balance : 0;
+    return v.toString().slice(0, 6);
+  }, [balance]);
 
   const handleMarkerPress = async (station: Station) => {
-    setSelectedStation(station)
-    setIsStationModalVisible(true)
+    setSelectedStation(station);
+    setIsStationModalVisible(true);
 
-    setLoadingBicycles(true)
-    setErrorBicycles(null)
+    setLoadingBicycles(true);
+    setErrorBicycles(null);
 
     try {
-      const bicycleData = await fetchBicyclesByStationId(station.id)
-      const filtered = bicycleData.filter((bike) => bike.status === "AVAILABLE")
-      setBicycles(filtered)
-    } catch (e: any) {
-      const msg = e?.message || "Не удалось загрузить велосипеды."
-      setErrorBicycles(msg)
-      Alert.alert("Ошибка", msg)
+      const bicycleData = await fetchBicyclesByStationId(station.id);
+      const filtered = bicycleData.filter(
+        (bike) => bike.status === "AVAILABLE",
+      );
+      setBicycles(filtered);
+    } catch (error: unknown) {
+      const msg = extractErrorMessage(error);
+      setErrorBicycles(msg);
+      Alert.alert("Ошибка", msg);
     } finally {
-      setLoadingBicycles(false)
+      setLoadingBicycles(false);
     }
-  }
+  };
 
   const handleAddBalance = async () => {
-    const amount = Number.parseFloat(addAmount)
+    const amount = Number.parseFloat(addAmount);
     if (Number.isNaN(amount) || amount <= 0) {
-      Alert.alert("Ошибка", "Введите корректную сумму.")
-      return
+      Alert.alert("Ошибка", "Введите корректную сумму.");
+      return;
     }
 
     try {
-      await addBalanceAction(amount)
-      setAddAmount("")
-      setIsBalanceModalVisible(false)
-      await reloadBalance()
-      Alert.alert("Успех", `Баланс пополнен на ${amount} ₽`)
-    } catch (e: any) {
-      Alert.alert("Ошибка", e?.message || "Не удалось пополнить баланс.")
+      await addBalanceAction(amount);
+      setAddAmount("");
+      setIsBalanceModalVisible(false);
+      await reloadBalance();
+      Alert.alert("Успех", `Баланс пополнен на ${amount} ₽`);
+    } catch (error: unknown) {
+      Alert.alert("Ошибка", extractErrorMessage(error));
     }
-  }
+  };
 
   const renderBicycleItem = ({ item }: { item: Bicycle }) => (
     <View style={styles.bicycleItem}>
@@ -309,77 +247,77 @@ export default function HomeScreen() {
         style={styles.rentButton}
         onPress={() => {
           if (!userToken || user == null) {
-            Alert.alert("Ошибка", "Пользователь не авторизован.")
-            return
+            Alert.alert("Ошибка", "Пользователь не авторизован.");
+            return;
           }
           if (!selectedStation?.id) {
-            Alert.alert("Ошибка", "Не удалось определить станцию.")
-            return
+            Alert.alert("Ошибка", "Не удалось определить станцию.");
+            return;
           }
-          setIsStationModalVisible(false)
-          setTargetBicycle(item)
-          setIsStartScannerVisible(true)
+          setIsStationModalVisible(false);
+          setTargetBicycle(item);
+          setIsStartScannerVisible(true);
         }}
       >
         <Text style={styles.rentButtonText}>Арендовать</Text>
       </TouchableOpacity>
     </View>
-  )
+  );
 
   const handleStartBarcodeScanned = async (data: string) => {
     if (!targetBicycle) {
-      Alert.alert("Ошибка", "Не выбран велосипед.")
-      return
+      Alert.alert("Ошибка", "Не выбран велосипед.");
+      return;
     }
     if (data !== targetBicycle.id.toString()) {
-      Alert.alert("Ошибка", "Неверный QR код. Попробуйте снова.")
-      return
+      Alert.alert("Ошибка", "Неверный QR код. Попробуйте снова.");
+      return;
     }
 
     if (!userToken || user == null || !selectedStation) {
-      Alert.alert("Ошибка", "Нет пользователя или станции.")
-      return
+      Alert.alert("Ошибка", "Нет пользователя или станции.");
+      return;
     }
 
-    setIsStartScannerVisible(false)
+    setIsStartScannerVisible(false);
 
     try {
-      await startRental(targetBicycle.id, selectedStation.id)
-      Alert.alert("Успех", "Аренда начата!")
-      await reloadStations()
-    } catch (e: any) {
-      Alert.alert("Ошибка", e?.message || "Не удалось начать аренду.")
+      await startRental(targetBicycle.id, selectedStation.id);
+      Alert.alert("Успех", "Аренда начата!");
+      await reloadStations();
+    } catch (error: unknown) {
+      Alert.alert("Ошибка", extractErrorMessage(error));
     }
-  }
+  };
 
   const handleStopStationScanned = async (data: string) => {
-    const stationId = Number.parseInt(data, 10)
+    const stationId = Number.parseInt(data, 10);
     if (Number.isNaN(stationId)) {
-      Alert.alert("Ошибка", "QR код не соответствует идентификатору станции.")
-      return
+      Alert.alert("Ошибка", "QR код не соответствует идентификатору станции.");
+      return;
     }
 
-    setIsStopScannerVisible(false)
+    setIsStopScannerVisible(false);
 
     if (!currentRental) {
-      Alert.alert("Ошибка", "Нет активной аренды.")
-      return
+      Alert.alert("Ошибка", "Нет активной аренды.");
+      return;
     }
 
-    const calculatedCost = Math.round((rentalTime / 60) * TARIFF_PER_MINUTE)
+    const calculatedCost = Math.round((rentalTime / 60) * TARIFF_PER_MINUTE);
 
     try {
-      await stopRental(currentRental.id, stationId, calculatedCost)
-      Alert.alert("Аренда остановлена", `Итоговый расход: ${calculatedCost} ₽`)
-      await Promise.all([reloadStations(), reloadBalance()])
-    } catch (e: any) {
-      Alert.alert("Ошибка", e?.message || "Не удалось завершить аренду.")
+      await stopRental(currentRental.id, stationId, calculatedCost);
+      Alert.alert("Аренда остановлена", `Итоговый расход: ${calculatedCost} ₽`);
+      await Promise.all([reloadStations(), reloadBalance()]);
+    } catch (error: unknown) {
+      Alert.alert("Ошибка", extractErrorMessage(error));
     }
-  }
+  };
 
-  const handleScroll = (event: any) => {
-    setScrollOffset(event.nativeEvent.contentOffset.y)
-  }
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setScrollOffset(event.nativeEvent.contentOffset.y);
+  };
   if (locationStatus === "denied" || locationStatus === "blocked") {
     return (
       <MenuDrawer menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
@@ -398,13 +336,13 @@ export default function HomeScreen() {
             description="Карта и станции доступны, но без определения вашего местоположения и центрирования на вас. Разрешите доступ в настройках или запросите снова."
             canRequestAgain={locationStatus === "denied"}
             onRequestAgain={async () => {
-              const ok = await requestPermission()
-              if (ok) await refreshLocation()
+              const ok = await requestPermission();
+              if (ok) await refreshLocation();
             }}
           />
         </SafeAreaView>
       </MenuDrawer>
-    )
+    );
   }
 
   // 2) Первый вход: ничего не запрашиваем сами — предлагаем кнопку
@@ -413,7 +351,7 @@ export default function HomeScreen() {
     // можешь либо показать баннер, либо оставить как есть и дать кнопку в UI
   }
 
-  const globalLoading = stationsLoading || balanceLoading
+  const globalLoading = stationsLoading || balanceLoading;
 
   if (globalLoading) {
     return (
@@ -421,16 +359,7 @@ export default function HomeScreen() {
         <ActivityIndicator size="large" color="#0000ff" />
         <Text style={styles.debugText}>Loading...</Text>
       </SafeAreaView>
-    )
-  }
-
-  const mapLatitude = location?.latitude ?? 59.9343
-  const mapLongitude = location?.longitude ?? 30.3351
-
-  // Обновление по кнопке: станции + геолокация
-  const handleReloadAll = () => {
-    reloadStations()
-    refreshLocation()
+    );
   }
 
   return (
@@ -461,8 +390,8 @@ export default function HomeScreen() {
           />
           <AnimatedUpdateButton
             onPress={() => {
-              reloadStations()
-              refreshLocation()
+              reloadStations();
+              refreshLocation();
             }}
           />
         </View>
@@ -500,7 +429,7 @@ export default function HomeScreen() {
           onBackdropPress={() => setIsStationModalVisible(false)}
           swipeThreshold={100}
           scrollTo={(node) => {
-            flatListRef.current = node
+            flatListRef.current = node;
           }}
           scrollOffset={scrollOffset}
           scrollOffsetMax={300}
@@ -590,7 +519,7 @@ export default function HomeScreen() {
         )}
       </SafeAreaView>
     </MenuDrawer>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -836,4 +765,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "white",
   },
-})
+});

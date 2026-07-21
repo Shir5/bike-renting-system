@@ -1,3 +1,4 @@
+import type { NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 import {
   View,
   Text,
@@ -9,90 +10,90 @@ import {
   Alert,
   FlatList,
   TextInput,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
-} from "react-native"
-import MapView, { Marker } from "react-native-maps"
-import React, { useState, useContext, useEffect, useRef } from "react"
-import { SafeAreaView } from "react-native-safe-area-context"
-import Modal from "react-native-modal"
-import { router } from "expo-router"
+} from "react-native";
+import MapView, { Marker } from "react-native-maps";
+import React, { useState, useContext, useEffect, useRef } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Modal from "react-native-modal";
+import { router } from "expo-router";
 
-import MenuDrawer from "../components/MenuDrawer"
-import { AuthContext } from "../context/AuthContext"
+import MenuDrawer from "../components/MenuDrawer";
+import { AuthContext } from "../context/AuthContext";
 
+import type { Station, CreateStationRequest } from "../services/stationService";
 import {
   fetchStations,
-  Station,
   createStation,
-  CreateStationRequest,
   deleteStation,
-} from "../services/stationService"
+} from "../services/stationService";
 
+import type {
+  CreateBicycleRequest,
+  Bicycle,
+  RepairDto,
+} from "../services/bicycleService";
 import {
   addBicycle,
-  CreateBicycleRequest,
   createRepair,
-  Bicycle,
   fetchRepairs,
-  RepairDto,
   deleteBicycle,
   completeRepair,
-} from "../services/bicycleService"
+} from "../services/bicycleService";
 
-import { fetchBicyclesByStationId } from "@/services/fetchBicyclesByStation"
+import { fetchBicyclesByStationId } from "@/services/fetchBicyclesByStation";
+import { extractErrorMessage } from "@/api/errors";
 
-const { width, height } = Dimensions.get("window")
+const { width, height } = Dimensions.get("window");
 
 interface SimpleMapEvent {
   nativeEvent: {
     coordinate: {
-      latitude: number
-      longitude: number
-    }
-  }
+      latitude: number;
+      longitude: number;
+    };
+  };
 }
 
 export default function AdminScreen() {
-  const { userToken } = useContext(AuthContext)
+  const { userToken } = useContext(AuthContext);
 
   useEffect(() => {
-    if (!userToken) router.replace("/login")
-  }, [userToken])
+    if (!userToken) router.replace("/login");
+  }, [userToken]);
 
   // repairMapRef хранит пару: { [bikeId: number]: repairId }, или undefined
-  const repairMapRef = useRef<{ [bikeId: number]: number | undefined }>({})
+  const repairMapRef = useRef<{ [bikeId: number]: number | undefined }>({});
 
-  const [menuOpen, setMenuOpen] = useState(false)
-  const mapRef = useRef<MapView>(null)
+  const [menuOpen, setMenuOpen] = useState(false);
+  const mapRef = useRef<MapView>(null);
 
-  const [stations, setStations] = useState<Station[]>([])
+  const [stations, setStations] = useState<Station[]>([]);
 
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null)
-  const [isBikeModalVisible, setIsBikeModalVisible] = useState(false)
-  const [bicycles, setBicycles] = useState<Bicycle[]>([])
-  const [loadingBicycles, setLoadingBicycles] = useState(false)
-  const [errorBicycles, setErrorBicycles] = useState<string | null>(null)
-  const [scrollOffset, setScrollOffset] = useState(0)
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+  const [isBikeModalVisible, setIsBikeModalVisible] = useState(false);
+  const [bicycles, setBicycles] = useState<Bicycle[]>([]);
+  const [loadingBicycles, setLoadingBicycles] = useState(false);
+  const [errorBicycles, setErrorBicycles] = useState<string | null>(null);
+  const [scrollOffset, setScrollOffset] = useState(0);
 
   const [isCreateStationModalVisible, setIsCreateStationModalVisible] =
-    useState(false)
+    useState(false);
   const [newStationCoords, setNewStationCoords] = useState<{
-    latitude: number
-    longitude: number
-  } | null>(null)
-  const [newStationName, setNewStationName] = useState("")
-  const [creatingStation, setCreatingStation] = useState(false)
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [newStationName, setNewStationName] = useState("");
+  const [creatingStation, setCreatingStation] = useState(false);
 
   const [isCreateBikeModalVisible, setIsCreateBikeModalVisible] =
-    useState(false)
-  const [bikeModel, setBikeModel] = useState("")
-  const [bikeType, setBikeType] = useState("")
-  const [bikeStatus, setBikeStatus] = useState("")
-  const [creatingBike, setCreatingBike] = useState(false)
-  const [pendingOpenCreateBike, setPendingOpenCreateBike] = useState(false)
+    useState(false);
+  const [bikeModel, setBikeModel] = useState("");
+  const [bikeType, setBikeType] = useState("");
+  const [bikeStatus, setBikeStatus] = useState("");
+  const [creatingBike, setCreatingBike] = useState(false);
+  const [pendingOpenCreateBike, setPendingOpenCreateBike] = useState(false);
 
-  const [helpModalVisible, setHelpModalVisible] = useState(false)
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
 
   // ВАЖНО: bikeType/bikeStatus должны быть string (и у тебя они string в state) — ок.
   const BICYCLE_MODELS = [
@@ -103,102 +104,102 @@ export default function AdminScreen() {
     "BICYCLE50",
     "BICYCLE60",
     "BICYCLE80",
-  ]
-  const BICYCLE_TYPES = ["MOUNTAIN", "HIGHWAY", "UNIVERSAL"]
-  const BICYCLE_STATUSES = ["AVAILABLE", "RENTED", "UNAVAILABLE"]
+  ];
+  const BICYCLE_TYPES = ["MOUNTAIN", "HIGHWAY", "UNIVERSAL"];
+  const BICYCLE_STATUSES = ["AVAILABLE", "RENTED", "UNAVAILABLE"];
 
   useEffect(() => {
-    if (userToken) loadStations()
-  }, [userToken])
+    if (userToken) loadStations();
+  }, [userToken]);
 
   const loadStations = async () => {
-    console.log("[loadStations] Начинаем загрузку станций...")
+    console.log("[loadStations] Начинаем загрузку станций...");
     try {
-      const stationData = await fetchStations()
-      console.log("[loadStations] Станции получены:", stationData)
-      setStations(stationData)
-    } catch (error: any) {
-      console.error("[loadStations] Ошибка загрузки станций", error)
-      Alert.alert("Ошибка", error?.message || "Не удалось загрузить станции")
+      const stationData = await fetchStations();
+      console.log("[loadStations] Станции получены:", stationData);
+      setStations(stationData);
+    } catch (error: unknown) {
+      console.error("[loadStations] Ошибка загрузки станций", error);
+      Alert.alert("Ошибка", extractErrorMessage(error));
     }
-  }
+  };
 
   const handleMarkerPress = async (station: Station) => {
     console.log(
       `[handleMarkerPress] Нажат маркер станции ID=${station.id}, имя="${station.name}"`,
-    )
-    setSelectedStation(station)
-    setIsBikeModalVisible(true)
-    setLoadingBicycles(true)
-    setErrorBicycles(null)
+    );
+    setSelectedStation(station);
+    setIsBikeModalVisible(true);
+    setLoadingBicycles(true);
+    setErrorBicycles(null);
 
     try {
-      const bicycleData = await fetchBicyclesByStationId(station.id)
-      console.log("[handleMarkerPress] Велосипеды получены:", bicycleData)
+      const bicycleData = await fetchBicyclesByStationId(station.id);
+      console.log("[handleMarkerPress] Велосипеды получены:", bicycleData);
 
-      console.log("[handleMarkerPress] -> fetchRepairs()...")
-      const repairPage = await fetchRepairs()
-      const allRepairs = repairPage.content
+      console.log("[handleMarkerPress] -> fetchRepairs()...");
+      const repairPage = await fetchRepairs();
+      const allRepairs = repairPage.content;
       console.log(
         "[handleMarkerPress] Все ремонты (первая страница):",
         allRepairs,
-      )
+      );
 
-      const inProgressMap = new Map<number, number>()
+      const inProgressMap = new Map<number, number>();
       allRepairs.forEach((r: RepairDto) => {
         if (r.status === "IN_PROGRESS") {
-          inProgressMap.set(r.bicycle, r.id)
+          inProgressMap.set(r.bicycle, r.id);
         }
-      })
-      console.log("[handleMarkerPress] Словарь (inProgressMap):", inProgressMap)
+      });
+      console.log(
+        "[handleMarkerPress] Словарь (inProgressMap):",
+        inProgressMap,
+      );
 
       const mergedBicycles = bicycleData.map((bike) => {
-        const localRepairId = repairMapRef.current[bike.id]
-        const serverInProgressId = inProgressMap.get(bike.id)
-        const finalRepairId = serverInProgressId ?? localRepairId
+        const localRepairId = repairMapRef.current[bike.id];
+        const serverInProgressId = inProgressMap.get(bike.id);
+        const finalRepairId = serverInProgressId ?? localRepairId;
 
         if (finalRepairId) {
-          return { ...bike, repairId: finalRepairId, status: "UNAVAILABLE" }
+          return { ...bike, repairId: finalRepairId, status: "UNAVAILABLE" };
         }
-        return bike
-      })
+        return bike;
+      });
 
-      setBicycles(mergedBicycles)
-    } catch (error: any) {
+      setBicycles(mergedBicycles);
+    } catch (error: unknown) {
       console.error(
         "[handleMarkerPress] Ошибка загрузки велосипедов или ремонтов",
         error,
-      )
-      setErrorBicycles("Не удалось загрузить велосипеды.")
-      Alert.alert(
-        "Ошибка",
-        error?.message || "Не удалось загрузить велосипеды.",
-      )
+      );
+      setErrorBicycles("Не удалось загрузить велосипеды.");
+      Alert.alert("Ошибка", extractErrorMessage(error));
     } finally {
-      setLoadingBicycles(false)
+      setLoadingBicycles(false);
     }
-  }
+  };
 
   const handleBikeListScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
-    setScrollOffset(event.nativeEvent.contentOffset.y)
-  }
+    setScrollOffset(event.nativeEvent.contentOffset.y);
+  };
 
   const handleMapLongPress = (event: SimpleMapEvent) => {
-    const { coordinate } = event.nativeEvent
-    setNewStationCoords(coordinate)
-    setNewStationName("")
-    setIsCreateStationModalVisible(true)
-  }
+    const { coordinate } = event.nativeEvent;
+    setNewStationCoords(coordinate);
+    setNewStationName("");
+    setIsCreateStationModalVisible(true);
+  };
 
   const handleCreateStation = async () => {
     if (!newStationCoords || !newStationName.trim()) {
-      Alert.alert("Ошибка", "Введите название станции.")
-      return
+      Alert.alert("Ошибка", "Введите название станции.");
+      return;
     }
 
-    setCreatingStation(true)
+    setCreatingStation(true);
     try {
       const requestPayload: CreateStationRequest = {
         name: newStationName.trim(),
@@ -206,53 +207,53 @@ export default function AdminScreen() {
           latitude: newStationCoords.latitude,
           longitude: newStationCoords.longitude,
         },
-      }
+      };
 
-      const newStation = await createStation(requestPayload)
-      Alert.alert("Успех", `Станция "${newStation.name}" создана!`)
-      await loadStations()
-      setIsCreateStationModalVisible(false)
-    } catch (error: any) {
-      Alert.alert("Ошибка", error?.message || "Не удалось создать станцию.")
+      const newStation = await createStation(requestPayload);
+      Alert.alert("Успех", `Станция "${newStation.name}" создана!`);
+      await loadStations();
+      setIsCreateStationModalVisible(false);
+    } catch (error: unknown) {
+      Alert.alert("Ошибка", extractErrorMessage(error));
     } finally {
-      setCreatingStation(false)
+      setCreatingStation(false);
     }
-  }
+  };
 
   const handleCreateBicycle = async () => {
     if (!selectedStation) {
-      Alert.alert("Ошибка", "Станция не выбрана.")
-      return
+      Alert.alert("Ошибка", "Станция не выбрана.");
+      return;
     }
     if (!bikeModel.trim() || !bikeType.trim() || !bikeStatus.trim()) {
-      Alert.alert("Ошибка", "Заполните все поля велосипеда.")
-      return
+      Alert.alert("Ошибка", "Заполните все поля велосипеда.");
+      return;
     }
 
-    setCreatingBike(true)
+    setCreatingBike(true);
 
     const requestPayload: CreateBicycleRequest = {
       model: bikeModel.trim(),
       type: bikeType.trim(),
       status: bikeStatus.trim(),
       stationId: selectedStation.id,
-    }
+    };
 
     try {
-      const newBike = await addBicycle(requestPayload)
-      Alert.alert("Успех", `Велосипед создан с ID ${newBike.id}`)
+      const newBike = await addBicycle(requestPayload);
+      Alert.alert("Успех", `Велосипед создан с ID ${newBike.id}`);
 
-      setBicycles((prevBikes) => [...prevBikes, newBike])
-      setIsCreateBikeModalVisible(false)
-      setBikeModel("")
-      setBikeType("")
-      setBikeStatus("")
-    } catch (error: any) {
-      Alert.alert("Ошибка", error?.message || "Не удалось создать велосипед.")
+      setBicycles((prevBikes) => [...prevBikes, newBike]);
+      setIsCreateBikeModalVisible(false);
+      setBikeModel("");
+      setBikeType("");
+      setBikeStatus("");
+    } catch (error: unknown) {
+      Alert.alert("Ошибка", extractErrorMessage(error));
     } finally {
-      setCreatingBike(false)
+      setCreatingBike(false);
     }
-  }
+  };
 
   const handleDeleteBicycle = async (bike: Bicycle) => {
     Alert.alert(
@@ -265,20 +266,17 @@ export default function AdminScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteBicycle(bike.id)
-              setBicycles((prev) => prev.filter((b) => b.id !== bike.id))
-              Alert.alert("Успех", "Велосипед удалён!")
-            } catch (error: any) {
-              Alert.alert(
-                "Ошибка",
-                error?.message || "Не удалось удалить велосипед.",
-              )
+              await deleteBicycle(bike.id);
+              setBicycles((prev) => prev.filter((b) => b.id !== bike.id));
+              Alert.alert("Успех", "Велосипед удалён!");
+            } catch (error: unknown) {
+              Alert.alert("Ошибка", extractErrorMessage(error));
             }
           },
         },
       ],
-    )
-  }
+    );
+  };
 
   const handleSendToRepair = async (bike: Bicycle) => {
     try {
@@ -286,52 +284,46 @@ export default function AdminScreen() {
         bicycleId: bike.id,
         technicianId: 1,
         description: "Отправка велосипеда в ремонт",
-      })
+      });
 
       const updatedBike = {
         ...bike,
         status: "UNAVAILABLE",
         repairId: repairRecord.id,
-      }
-      repairMapRef.current[bike.id] = repairRecord.id
+      };
+      repairMapRef.current[bike.id] = repairRecord.id;
 
       setBicycles((prevBikes) =>
         prevBikes.map((b) => (b.id === bike.id ? updatedBike : b)),
-      )
-      Alert.alert("Успех", "Велосипед отправлен на ремонт")
-    } catch (error: any) {
-      Alert.alert(
-        "Ошибка",
-        error?.message || "Не удалось отправить велосипед в ремонт",
-      )
+      );
+      Alert.alert("Успех", "Велосипед отправлен на ремонт");
+    } catch (error: unknown) {
+      Alert.alert("Ошибка", extractErrorMessage(error));
     }
-  }
+  };
 
   const handleReturnFromRepair = async (bike: Bicycle) => {
     if (!bike.repairId) {
-      Alert.alert("Ошибка", "Нет записи ремонта для данного велосипеда")
-      return
+      Alert.alert("Ошибка", "Нет записи ремонта для данного велосипеда");
+      return;
     }
     try {
-      await completeRepair(bike.repairId)
+      await completeRepair(bike.repairId);
 
-      const updatedBike = { ...bike, status: "AVAILABLE", repairId: undefined }
-      repairMapRef.current[bike.id] = undefined
+      const updatedBike = { ...bike, status: "AVAILABLE", repairId: undefined };
+      repairMapRef.current[bike.id] = undefined;
 
       setBicycles((prevBikes) =>
         prevBikes.map((b) => (b.id === bike.id ? updatedBike : b)),
-      )
-      Alert.alert("Успех", "Велосипед возвращен с ремонта")
-    } catch (error: any) {
-      Alert.alert(
-        "Ошибка",
-        error?.message || "Не удалось вернуть велосипед с ремонта",
-      )
+      );
+      Alert.alert("Успех", "Велосипед возвращен с ремонта");
+    } catch (error: unknown) {
+      Alert.alert("Ошибка", extractErrorMessage(error));
     }
-  }
+  };
 
   const handleDeleteStation = async () => {
-    if (!selectedStation) return
+    if (!selectedStation) return;
     Alert.alert(
       "Подтверждение",
       `Вы уверены, что хотите удалить станцию "${selectedStation.name}" (ID=${selectedStation.id})?`,
@@ -342,26 +334,26 @@ export default function AdminScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteStation(selectedStation.id)
-              Alert.alert("Успех", `Станция "${selectedStation.name}" удалена!`)
+              await deleteStation(selectedStation.id);
+              Alert.alert(
+                "Успех",
+                `Станция "${selectedStation.name}" удалена!`,
+              );
               setStations((prev) =>
                 prev.filter((st) => st.id !== selectedStation.id),
-              )
-              setIsBikeModalVisible(false)
-              setSelectedStation(null)
-            } catch (err: any) {
-              Alert.alert(
-                "Ошибка",
-                err?.message || "Не удалось удалить станцию.",
-              )
+              );
+              setIsBikeModalVisible(false);
+              setSelectedStation(null);
+            } catch (error: unknown) {
+              Alert.alert("Ошибка", extractErrorMessage(error));
             }
           },
         },
       ],
-    )
-  }
+    );
+  };
 
-  const toggleMenu = () => setMenuOpen((v) => !v)
+  const toggleMenu = () => setMenuOpen((v) => !v);
 
   const renderBicycleItem = ({ item }: { item: Bicycle }) => (
     <View style={styles.bicycleItem}>
@@ -394,7 +386,7 @@ export default function AdminScreen() {
         <Text style={{ color: "#333" }}>Удалить велосипед</Text>
       </TouchableOpacity>
     </View>
-  )
+  );
 
   return (
     <MenuDrawer menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
@@ -436,6 +428,8 @@ export default function AdminScreen() {
                   latitude: station.latitude,
                   longitude: station.longitude,
                 }}
+                // React Native resolves static assets through compile-time require().
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
                 image={require("../assets/images/scooter.png")}
                 title={station.name}
                 description={`Доступно велосипедов: ${station.availableBikes}`}
@@ -457,8 +451,8 @@ export default function AdminScreen() {
           onBackdropPress={() => setIsBikeModalVisible(false)}
           onModalHide={() => {
             if (pendingOpenCreateBike) {
-              setIsCreateBikeModalVisible(true)
-              setPendingOpenCreateBike(false)
+              setIsCreateBikeModalVisible(true);
+              setPendingOpenCreateBike(false);
             }
           }}
         >
@@ -504,8 +498,8 @@ export default function AdminScreen() {
                 <TouchableOpacity
                   style={styles.createBikeButton}
                   onPress={() => {
-                    setPendingOpenCreateBike(true)
-                    setIsBikeModalVisible(false)
+                    setPendingOpenCreateBike(true);
+                    setIsBikeModalVisible(false);
                   }}
                 >
                   <Text style={styles.createBikeButtonText}>
@@ -676,7 +670,7 @@ export default function AdminScreen() {
         </Modal>
       </SafeAreaView>
     </MenuDrawer>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -868,4 +862,4 @@ const styles = StyleSheet.create({
     color: "#333",
     fontSize: 14,
   },
-})
+});

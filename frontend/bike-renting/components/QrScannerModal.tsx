@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react"
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -7,18 +7,19 @@ import {
   ActivityIndicator,
   Platform,
   StatusBar,
-} from "react-native"
-import Modal from "react-native-modal"
-import { CameraView, CameraType } from "expo-camera"
+} from "react-native";
+import Modal from "react-native-modal";
+import type { CameraType } from "expo-camera";
+import { CameraView } from "expo-camera";
 
-import { useQrScanner } from "@/hooks/useQrScanner"
+import { useQrScanner } from "@/hooks/useQrScanner";
 
 type Props = {
-  visible: boolean
-  onClose: () => void
-  onScan: (data: string) => void // единый контракт результата
-  title?: string
-}
+  visible: boolean;
+  onClose: () => void;
+  onScan: (data: string) => void; // единый контракт результата
+  title?: string;
+};
 
 export const QrScannerModal = ({
   visible,
@@ -27,26 +28,26 @@ export const QrScannerModal = ({
   title = "Сканирование QR",
 }: Props) => {
   const { permission, status, error, requestPermission, resetError } =
-    useQrScanner()
+    useQrScanner();
 
-  const scannedRef = useRef(false)
+  const scannedRef = useRef(false);
 
   // сбрасываем флаг скана при каждом открытии
   useEffect(() => {
-    if (visible) scannedRef.current = false
-  }, [visible])
+    if (visible) scannedRef.current = false;
+  }, [visible]);
 
   // если можно — при открытии сразу запрашиваем permission (но не блокируем экран)
   useEffect(() => {
-    if (!visible) return
-    resetError()
+    if (!visible) return;
+    resetError();
     if (!permission?.granted) {
       // не обязательно, но UX лучше: сразу запросить
-      requestPermission()
+      requestPermission();
     }
-  }, [visible]) // intentionally minimal deps, чтобы не гонять запросы
+  }, [visible]); // intentionally minimal deps, чтобы не гонять запросы
 
-  const canAskAgain = permission?.canAskAgain ?? true
+  const canAskAgain = permission?.canAskAgain ?? true;
 
   const body = useMemo(() => {
     if (status === "requesting_permission") {
@@ -58,7 +59,7 @@ export const QrScannerModal = ({
             <Text style={styles.secondaryText}>Закрыть</Text>
           </TouchableOpacity>
         </View>
-      )
+      );
     }
 
     if (status === "need_permission") {
@@ -87,7 +88,7 @@ export const QrScannerModal = ({
             <Text style={styles.secondaryText}>Отмена</Text>
           </TouchableOpacity>
         </View>
-      )
+      );
     }
 
     if (status === "error") {
@@ -99,8 +100,8 @@ export const QrScannerModal = ({
           <TouchableOpacity
             style={styles.primaryBtn}
             onPress={() => {
-              resetError()
-              requestPermission()
+              resetError();
+              requestPermission();
             }}
           >
             <Text style={styles.primaryText}>Повторить</Text>
@@ -110,7 +111,7 @@ export const QrScannerModal = ({
             <Text style={styles.secondaryText}>Закрыть</Text>
           </TouchableOpacity>
         </View>
-      )
+      );
     }
 
     // ready / idle -> показываем камеру только когда granted
@@ -124,7 +125,7 @@ export const QrScannerModal = ({
             <Text style={styles.secondaryText}>Закрыть</Text>
           </TouchableOpacity>
         </View>
-      )
+      );
     }
 
     return (
@@ -134,17 +135,17 @@ export const QrScannerModal = ({
           style={styles.camera}
           facing={"back" as CameraType}
           onBarcodeScanned={({ data }) => {
-            if (!visible) return
-            if (scannedRef.current) return
-            scannedRef.current = true
+            if (!visible) return;
+            if (scannedRef.current) return;
+            scannedRef.current = true;
 
             try {
-              onScan(data)
+              onScan(data);
             } finally {
               // закрываем сканер после успешного скана
-              onClose()
+              onClose();
               // оставляем задержку чтобы не схлопнуться в гонку ререндеров
-              setTimeout(() => (scannedRef.current = false), 400)
+              setTimeout(() => (scannedRef.current = false), 400);
             }
           }}
         >
@@ -160,7 +161,7 @@ export const QrScannerModal = ({
           </View>
         </CameraView>
       </View>
-    )
+    );
   }, [
     status,
     permission?.granted,
@@ -172,7 +173,7 @@ export const QrScannerModal = ({
     onScan,
     requestPermission,
     resetError,
-  ])
+  ]);
 
   return (
     <Modal
@@ -185,8 +186,8 @@ export const QrScannerModal = ({
     >
       <View style={styles.container}>{body}</View>
     </Modal>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   modal: { margin: 0 },
@@ -240,4 +241,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   hintText: { color: "white", fontSize: 14, opacity: 0.9 },
-})
+});

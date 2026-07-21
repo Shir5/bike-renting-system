@@ -1,13 +1,13 @@
-import { api } from "@/api/client"
-import { z } from "zod"
+import { api } from "@/api/client";
+import { z } from "zod";
 
 const UserInfoDtoSchema = z.object({
   username: z.string(),
   balance: z.number(),
   debt: z.number(),
-})
+});
 
-export type UserResponse = z.infer<typeof UserInfoDtoSchema>
+export type UserResponse = z.infer<typeof UserInfoDtoSchema>;
 
 /**
  * Получить информацию о текущем пользователе.
@@ -17,10 +17,10 @@ export type UserResponse = z.infer<typeof UserInfoDtoSchema>
  */
 export const fetchUserInfo = async (): Promise<UserResponse | null> => {
   try {
-    const res = await api.get("/auth/info")
-    const parsed = UserInfoDtoSchema.safeParse(res.data)
-    return parsed.success ? parsed.data : null
+    const res = await api.get("/auth/info");
+    const parsed = UserInfoDtoSchema.safeParse(res.data);
+    return parsed.success ? parsed.data : null;
   } catch {
-    return null
+    return null;
   }
-}
+};

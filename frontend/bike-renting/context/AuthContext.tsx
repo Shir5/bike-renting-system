@@ -1,25 +1,25 @@
-import React, { createContext, ReactNode, useEffect } from "react"
-import { ActivityIndicator } from "react-native"
-import { useAuth } from "@/hooks/useAuth"
-import type { AuthSnapshot } from "@/api/secureAuthStore"
+import React, { createContext, ReactNode, useEffect } from "react";
+import { ActivityIndicator } from "react-native";
+import { useAuth } from "@/hooks/useAuth";
+import type { AuthSnapshot } from "@/api/secureAuthStore";
 
 export type AuthContextType = {
   // старое
-  userToken: string | null
-  user: number | null
-  login: (token: string, userId: number) => Promise<void>
-  logout: () => Promise<void>
+  userToken: string | null;
+  user: number | null;
+  login: (token: string, userId: number) => Promise<void>;
+  logout: () => Promise<void>;
 
   // новое (может пригодиться дальше)
-  refreshToken: string | null
-  username: string | null
-  isReady: boolean
-  signIn: (payload: { username: string; password: string }) => Promise<void>
-  signUp: (payload: { username: string; password: string }) => Promise<void>
+  refreshToken: string | null;
+  username: string | null;
+  isReady: boolean;
+  signIn: (payload: { username: string; password: string }) => Promise<void>;
+  signUp: (payload: { username: string; password: string }) => Promise<void>;
 
   // FIX: соответствует useAuth.restoreSession
-  restoreSession: () => Promise<AuthSnapshot>
-}
+  restoreSession: () => Promise<AuthSnapshot>;
+};
 
 export const AuthContext = createContext<AuthContextType>({
   userToken: null,
@@ -38,9 +38,9 @@ export const AuthContext = createContext<AuthContextType>({
     userId: null,
     username: null,
   }),
-})
+});
 
-type Props = { children: ReactNode }
+type Props = { children: ReactNode };
 
 export function AuthProvider({ children }: Props) {
   const {
@@ -54,11 +54,11 @@ export function AuthProvider({ children }: Props) {
     signUp,
     signOut,
     setSession,
-  } = useAuth()
+  } = useAuth();
 
   useEffect(() => {
-    restoreSession()
-  }, [restoreSession])
+    restoreSession();
+  }, [restoreSession]);
 
   if (!isReady) {
     return (
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: Props) {
         color="#0000ff"
         style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
       />
-    )
+    );
   }
 
   return (
@@ -80,10 +80,10 @@ export function AuthProvider({ children }: Props) {
           await setSession({
             accessToken: token,
             userId: id,
-          })
+          });
         },
         logout: async () => {
-          await signOut()
+          await signOut();
         },
 
         // новое API
@@ -97,5 +97,5 @@ export function AuthProvider({ children }: Props) {
     >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }

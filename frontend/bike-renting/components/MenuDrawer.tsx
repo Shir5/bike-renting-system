@@ -1,4 +1,5 @@
-import React, { ReactNode, useEffect, useState, useContext } from "react"
+import type { ReactNode } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   View,
   Text,
@@ -8,37 +9,37 @@ import {
   Easing,
   Dimensions,
   PanResponder,
-} from "react-native"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { router } from "expo-router"
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 
-import { AuthContext } from "../context/AuthContext"
-import { api } from "@/api/client" // ВАЖНО: один общий api
-import { secureAuthStore } from "@/api/secureAuthStore"
+import { AuthContext } from "../context/AuthContext";
+import { api } from "@/api/client"; // ВАЖНО: один общий api
+import { secureAuthStore } from "@/api/secureAuthStore";
 
-const { width } = Dimensions.get("window")
-const MAX_MENU_WIDTH = width * 0.7
+const { width } = Dimensions.get("window");
+const MAX_MENU_WIDTH = width * 0.7;
 
 interface MenuDrawerProps {
-  children: ReactNode
-  menuOpen: boolean
-  setMenuOpen: (open: boolean) => void
+  children: ReactNode;
+  menuOpen: boolean;
+  setMenuOpen: (open: boolean) => void;
 }
 
 type AdminRoleResponse = {
-  role: "ADMIN" | "USER" | string
-}
+  role: "ADMIN" | "USER" | string;
+};
 
 export default function MenuDrawer({
   children,
   menuOpen,
   setMenuOpen,
 }: MenuDrawerProps) {
-  const { logout } = useContext(AuthContext)
+  const { logout } = useContext(AuthContext);
 
-  const [animation] = useState(new Animated.Value(menuOpen ? 1 : 0))
-  const [isAdminMode, setIsAdminMode] = useState(false)
-  const [isCheckingRole, setIsCheckingRole] = useState(false)
+  const [animation] = useState(new Animated.Value(menuOpen ? 1 : 0));
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [isCheckingRole, setIsCheckingRole] = useState(false);
 
   useEffect(() => {
     Animated.timing(animation, {
@@ -46,59 +47,59 @@ export default function MenuDrawer({
       duration: 300,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
-    }).start()
-  }, [menuOpen, animation])
+    }).start();
+  }, [menuOpen, animation]);
 
   useEffect(() => {
     const checkAdminMode = async () => {
       try {
-        const storedMode = await AsyncStorage.getItem("isAdminMode")
-        setIsAdminMode(storedMode === "true")
+        const storedMode = await AsyncStorage.getItem("isAdminMode");
+        setIsAdminMode(storedMode === "true");
       } catch (error) {
         console.error(
           "Ошибка при загрузке состояния режима администратора:",
           error,
-        )
+        );
       }
-    }
-    checkAdminMode()
-  }, [])
+    };
+    checkAdminMode();
+  }, []);
 
   const translateX = animation.interpolate({
     inputRange: [0, 1],
     outputRange: [-MAX_MENU_WIDTH, 0],
-  })
+  });
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => {
-      const isSwipeFromEdge = gestureState.moveX < width * 0.1
+      const isSwipeFromEdge = gestureState.moveX < width * 0.1;
       const isHorizontalSwipe =
-        Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
-      return isHorizontalSwipe && (!menuOpen ? isSwipeFromEdge : true)
+        Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      return isHorizontalSwipe && (!menuOpen ? isSwipeFromEdge : true);
     },
     onPanResponderMove: (_, gestureState) => {
       if (gestureState.dx > 0 && !menuOpen) {
-        animation.setValue(Math.min(gestureState.dx / MAX_MENU_WIDTH, 1))
+        animation.setValue(Math.min(gestureState.dx / MAX_MENU_WIDTH, 1));
       }
       if (gestureState.dx < 0 && menuOpen) {
-        animation.setValue(Math.max(1 + gestureState.dx / MAX_MENU_WIDTH, 0))
+        animation.setValue(Math.max(1 + gestureState.dx / MAX_MENU_WIDTH, 0));
       }
     },
     onPanResponderRelease: (_, gestureState) => {
       if (gestureState.dx > MAX_MENU_WIDTH * 0.2) {
-        setMenuOpen(true)
+        setMenuOpen(true);
       } else if (gestureState.dx < -MAX_MENU_WIDTH * 0.2) {
-        setMenuOpen(false)
+        setMenuOpen(false);
       } else {
         Animated.timing(animation, {
           toValue: menuOpen ? 1 : 0,
           duration: 300,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: false,
-        }).start()
+        }).start();
       }
     },
-  })
+  });
 
   const handleExit = () => {
     Animated.timing(animation, {
@@ -107,50 +108,50 @@ export default function MenuDrawer({
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
     }).start(async () => {
-      setMenuOpen(false)
-      await AsyncStorage.setItem("isAdminMode", "false")
-      await logout()
-      router.replace("/login")
-    })
-  }
+      setMenuOpen(false);
+      await AsyncStorage.setItem("isAdminMode", "false");
+      await logout();
+      router.replace("/login");
+    });
+  };
 
   const handleAdminModeRedirect = async () => {
     try {
-      setIsCheckingRole(true)
+      setIsCheckingRole(true);
 
       // Если токена нет — сразу на логин (и не делаем запрос)
-      const access = await secureAuthStore.getAccessToken()
+      const access = await secureAuthStore.getAccessToken();
       if (!access) {
-        console.error("Токен отсутствует!")
-        router.replace("/login")
-        return
+        console.error("Токен отсутствует!");
+        router.replace("/login");
+        return;
       }
 
       // Если уже admin mode — выключаем и уходим на home
       if (isAdminMode) {
-        setIsAdminMode(false)
-        await AsyncStorage.setItem("isAdminMode", "false")
-        router.push("/")
-        return
+        setIsAdminMode(false);
+        await AsyncStorage.setItem("isAdminMode", "false");
+        router.push("/");
+        return;
       }
 
       // ВАЖНО: запрос через общий api (интерцепторы + refresh)
-      const res = await api.get<AdminRoleResponse>("/admin-requests/role")
+      const res = await api.get<AdminRoleResponse>("/admin-requests/role");
 
       if (res.data?.role === "ADMIN") {
-        setIsAdminMode(true)
-        await AsyncStorage.setItem("isAdminMode", "true")
-        router.push("/admin")
+        setIsAdminMode(true);
+        await AsyncStorage.setItem("isAdminMode", "true");
+        router.push("/admin");
       } else {
-        console.error("Недостаточно прав")
+        console.error("Недостаточно прав");
       }
     } catch (error) {
       // Тут уже может быть appErr из toAppError (если запрос пошёл через api)
-      console.error("Ошибка при запросе в админ-режим:", error)
+      console.error("Ошибка при запросе в админ-режим:", error);
     } finally {
-      setIsCheckingRole(false)
+      setIsCheckingRole(false);
     }
-  }
+  };
 
   return (
     <View style={{ flex: 1 }} {...panResponder.panHandlers}>
@@ -170,8 +171,8 @@ export default function MenuDrawer({
             {isCheckingRole
               ? "Проверка..."
               : isAdminMode
-              ? "User mode"
-              : "Admin mode"}
+                ? "User mode"
+                : "Admin mode"}
           </Text>
         </TouchableOpacity>
 
@@ -180,7 +181,7 @@ export default function MenuDrawer({
         </TouchableOpacity>
       </Animated.View>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -223,4 +224,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-})
+});

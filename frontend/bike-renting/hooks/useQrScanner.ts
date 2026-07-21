@@ -1,45 +1,45 @@
-import { useCallback, useMemo, useState } from "react"
-import { useCameraPermissions } from "expo-camera"
+import { useCallback, useMemo, useState } from "react";
+import { useCameraPermissions } from "expo-camera";
 
 export type QrScannerState =
   | "idle"
   | "need_permission"
   | "requesting_permission"
   | "ready"
-  | "error"
+  | "error";
 
 export const useQrScanner = () => {
-  const [permission, requestPermissionBase] = useCameraPermissions()
+  const [permission, requestPermissionBase] = useCameraPermissions();
 
-  const [error, setError] = useState<string | null>(null)
-  const [isRequesting, setIsRequesting] = useState(false)
+  const [error, setError] = useState<string | null>(null);
+  const [isRequesting, setIsRequesting] = useState(false);
 
   const status: QrScannerState = useMemo(() => {
-    if (error) return "error"
-    if (isRequesting) return "requesting_permission"
-    if (!permission) return "idle"
-    if (!permission.granted) return "need_permission"
-    return "ready"
-  }, [permission, isRequesting, error])
+    if (error) return "error";
+    if (isRequesting) return "requesting_permission";
+    if (!permission) return "idle";
+    if (!permission.granted) return "need_permission";
+    return "ready";
+  }, [permission, isRequesting, error]);
 
   const requestPermission = useCallback(async () => {
-    setError(null)
-    setIsRequesting(true)
+    setError(null);
+    setIsRequesting(true);
     try {
-      const res = await requestPermissionBase()
+      const res = await requestPermissionBase();
       if (!res.granted) {
-        setError("Доступ к камере не предоставлен.")
+        setError("Доступ к камере не предоставлен.");
       }
-      return res
+      return res;
     } catch (e: any) {
-      setError(e?.message ?? "Не удалось запросить доступ к камере.")
-      return null
+      setError(e?.message ?? "Не удалось запросить доступ к камере.");
+      return null;
     } finally {
-      setIsRequesting(false)
+      setIsRequesting(false);
     }
-  }, [requestPermissionBase])
+  }, [requestPermissionBase]);
 
-  const resetError = useCallback(() => setError(null), [])
+  const resetError = useCallback(() => setError(null), []);
 
   return {
     permission, // { granted, canAskAgain, ... }
@@ -47,5 +47,5 @@ export const useQrScanner = () => {
     error,
     requestPermission,
     resetError,
-  }
-}
+  };
+};

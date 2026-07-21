@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react"
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -7,50 +7,48 @@ import {
   StyleSheet,
   Dimensions,
   TouchableOpacity,
-} from "react-native"
-import { useRouter } from "expo-router"
-import { registerUser } from "../services/authApi"
-import { AuthContext } from "../context/AuthContext"
+} from "react-native";
+import { useRouter } from "expo-router";
+import { registerUser } from "../services/authApi";
+import { AuthContext } from "../context/AuthContext";
+import { extractErrorMessage } from "@/api/errors";
 
 // Pull width/height for dimension-based styling
-const { width } = Dimensions.get("window")
+const { width } = Dimensions.get("window");
 
 export default function RegisterScreen() {
-  const router = useRouter()
-  const { login } = useContext(AuthContext)
+  const router = useRouter();
+  const { login } = useContext(AuthContext);
 
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleRegister = async () => {
     if (!username || !password) {
-      Alert.alert("Ошибка", "Введите имя пользователя и пароль.")
-      return
+      Alert.alert("Ошибка", "Введите имя пользователя и пароль.");
+      return;
     }
     if (password.length < 4) {
-      Alert.alert("Ошибка", "Пароль должен быть не менее 8 символов.")
-      return
+      Alert.alert("Ошибка", "Пароль должен быть не менее 8 символов.");
+      return;
     }
 
     try {
       // Call the registerUser API function and get a JwtResponse object
-      const jwtResponse = await registerUser({ username, password })
+      const jwtResponse = await registerUser({ username, password });
       if (jwtResponse) {
         // Store the token and user in AuthContext
-        login(jwtResponse.access_token, jwtResponse.user_id )
-        Alert.alert("Успех", "Пользователь успешно зарегистрирован!")
-        router.replace("/") // Navigate to the main screen
+        login(jwtResponse.access_token, jwtResponse.user_id);
+        Alert.alert("Успех", "Пользователь успешно зарегистрирован!");
+        router.replace("/"); // Navigate to the main screen
       } else {
-        Alert.alert("Ошибка", "Сервер не вернул токен.")
+        Alert.alert("Ошибка", "Сервер не вернул токен.");
       }
-    } catch (error: any) {
-      console.error("Ошибка регистрации:", error)
-      Alert.alert(
-        "Ошибка",
-        error?.response?.data?.message || "Произошла ошибка при регистрации.",
-      )
+    } catch (error: unknown) {
+      console.error("Ошибка регистрации:", error);
+      Alert.alert("Ошибка", extractErrorMessage(error));
     }
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -90,7 +88,7 @@ export default function RegisterScreen() {
         <Text style={styles.loginButtonText}>Уже есть аккаунт?</Text>
       </TouchableOpacity>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -140,4 +138,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-})
+});

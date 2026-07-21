@@ -77,6 +77,8 @@ export const StationsMap = memo(function StationsMap({
               latitude: station.latitude,
               longitude: station.longitude,
             }}
+            // React Native resolves static assets through compile-time require().
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             image={require("../assets/images/scooter.png")}
             title={station.name}
             description={`Доступно велосипедов: ${station.availableBikes}`}

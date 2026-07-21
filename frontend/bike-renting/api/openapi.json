@@ -94,9 +94,7 @@
   "paths": {
     "/api/v1/repairs/{id}/complete": {
       "put": {
-        "tags": [
-          "Repairs"
-        ],
+        "tags": ["Repairs"],
         "summary": "Complete a repair",
         "operationId": "complete",
         "parameters": [
@@ -146,9 +144,7 @@
     },
     "/api/v1/rentals/{id}/complete": {
       "put": {
-        "tags": [
-          "Rentals"
-        ],
+        "tags": ["Rentals"],
         "summary": "Complete an active rental",
         "operationId": "complete_1",
         "parameters": [
@@ -218,9 +214,7 @@
     },
     "/api/v1/technicians": {
       "get": {
-        "tags": [
-          "Technicians"
-        ],
+        "tags": ["Technicians"],
         "summary": "Get all technicians",
         "operationId": "findAll",
         "parameters": [
@@ -247,9 +241,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Technicians"
-        ],
+        "tags": ["Technicians"],
         "summary": "Create a new technician",
         "operationId": "create",
         "requestBody": {
@@ -288,9 +280,7 @@
     },
     "/api/v1/stations": {
       "get": {
-        "tags": [
-          "Stations"
-        ],
+        "tags": ["Stations"],
         "summary": "Get all stations with optional filtering",
         "operationId": "findAll_1",
         "parameters": [
@@ -326,9 +316,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Stations"
-        ],
+        "tags": ["Stations"],
         "summary": "Create a new station",
         "operationId": "create_1",
         "requestBody": {
@@ -367,9 +355,7 @@
     },
     "/api/v1/repairs": {
       "get": {
-        "tags": [
-          "Repairs"
-        ],
+        "tags": ["Repairs"],
         "summary": "Get all repairs",
         "operationId": "findAll_2",
         "parameters": [
@@ -396,9 +382,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Repairs"
-        ],
+        "tags": ["Repairs"],
         "summary": "Start a new repair",
         "operationId": "create_2",
         "requestBody": {
@@ -467,9 +451,7 @@
     },
     "/api/v1/rentals": {
       "get": {
-        "tags": [
-          "Rentals"
-        ],
+        "tags": ["Rentals"],
         "summary": "Get all rentals",
         "operationId": "findAll_3",
         "parameters": [
@@ -496,9 +478,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Rentals"
-        ],
+        "tags": ["Rentals"],
         "summary": "Start a new rental",
         "operationId": "create_3",
         "requestBody": {
@@ -567,9 +547,7 @@
     },
     "/api/v1/rentals/{id}/cancel": {
       "post": {
-        "tags": [
-          "Rentals"
-        ],
+        "tags": ["Rentals"],
         "summary": "Cancel an active rental",
         "operationId": "cancel",
         "parameters": [
@@ -619,9 +597,7 @@
     },
     "/api/v1/payments": {
       "get": {
-        "tags": [
-          "Payments"
-        ],
+        "tags": ["Payments"],
         "summary": "Get all payments with optional username filter",
         "operationId": "findAll_4",
         "parameters": [
@@ -656,9 +632,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Payments"
-        ],
+        "tags": ["Payments"],
         "summary": "Create a new payment (add balance)",
         "operationId": "create_4",
         "requestBody": {
@@ -707,9 +681,7 @@
     },
     "/api/v1/bicycles": {
       "get": {
-        "tags": [
-          "Bicycles"
-        ],
+        "tags": ["Bicycles"],
         "summary": "Get all bicycles with optional filtering by model",
         "operationId": "findAll_5",
         "parameters": [
@@ -744,9 +716,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Bicycles"
-        ],
+        "tags": ["Bicycles"],
         "summary": "Create a new bicycle",
         "operationId": "create_5",
         "requestBody": {
@@ -795,9 +765,7 @@
     },
     "/api/v1/auth/register": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "summary": "Register a new user",
         "description": "Creates a new user account and returns authentication tokens",
         "operationId": "register",
@@ -852,9 +820,7 @@
     },
     "/api/v1/auth/refresh": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "summary": "Refresh access token",
         "description": "Uses a valid refresh token to obtain new access and refresh tokens",
         "operationId": "refresh",
@@ -908,9 +874,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "summary": "Logout user",
         "description": "Revokes the provided refresh token",
         "operationId": "logout",
@@ -933,9 +897,7 @@
     },
     "/api/v1/auth/logout-all": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "summary": "Logout from all devices",
         "description": "Revokes all refresh tokens for the current user",
         "operationId": "logoutAll",
@@ -951,9 +913,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "summary": "Authenticate user",
         "description": "Authenticates user credentials and returns access and refresh tokens",
         "operationId": "login",
@@ -998,9 +958,7 @@
     },
     "/api/v1/admin-requests/create": {
       "post": {
-        "tags": [
-          "Admin Requests"
-        ],
+        "tags": ["Admin Requests"],
         "summary": "Create a new admin request",
         "operationId": "createAdminRequest",
         "requestBody": {
@@ -1039,9 +997,7 @@
     },
     "/api/v1/admin-requests/pending/{requestId}/reject": {
       "patch": {
-        "tags": [
-          "Admin Requests"
-        ],
+        "tags": ["Admin Requests"],
         "summary": "Reject an admin request",
         "operationId": "rejectRequest",
         "parameters": [
@@ -1070,9 +1026,7 @@
     },
     "/api/v1/admin-requests/pending/{requestId}/approve": {
       "patch": {
-        "tags": [
-          "Admin Requests"
-        ],
+        "tags": ["Admin Requests"],
         "summary": "Approve an admin request",
         "operationId": "approveRequest",
         "parameters": [
@@ -1101,9 +1055,7 @@
     },
     "/api/v1/technicians/{id}": {
       "get": {
-        "tags": [
-          "Technicians"
-        ],
+        "tags": ["Technicians"],
         "summary": "Get technician by ID",
         "operationId": "findById",
         "parameters": [
@@ -1141,9 +1093,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Technicians"
-        ],
+        "tags": ["Technicians"],
         "summary": "Delete a technician",
         "operationId": "delete",
         "parameters": [
@@ -1169,9 +1119,7 @@
     },
     "/api/v1/stations/{id}": {
       "get": {
-        "tags": [
-          "Stations"
-        ],
+        "tags": ["Stations"],
         "summary": "Get station by ID",
         "operationId": "findById_1",
         "parameters": [
@@ -1209,9 +1157,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Stations"
-        ],
+        "tags": ["Stations"],
         "summary": "Delete a station",
         "operationId": "delete_1",
         "parameters": [
@@ -1237,9 +1183,7 @@
     },
     "/api/v1/stations/{id}/bicycles": {
       "get": {
-        "tags": [
-          "Stations"
-        ],
+        "tags": ["Stations"],
         "summary": "Get all bicycles at a station",
         "operationId": "findBicycles",
         "parameters": [
@@ -1277,9 +1221,7 @@
     },
     "/api/v1/repairs/{id}": {
       "get": {
-        "tags": [
-          "Repairs"
-        ],
+        "tags": ["Repairs"],
         "summary": "Get repair by ID",
         "operationId": "findById_2",
         "parameters": [
@@ -1319,9 +1261,7 @@
     },
     "/api/v1/repairs/scheduled": {
       "get": {
-        "tags": [
-          "Repairs"
-        ],
+        "tags": ["Repairs"],
         "summary": "Get bicycles scheduled for maintenance",
         "operationId": "findScheduled",
         "parameters": [
@@ -1350,9 +1290,7 @@
     },
     "/api/v1/rentals/{id}": {
       "get": {
-        "tags": [
-          "Rentals"
-        ],
+        "tags": ["Rentals"],
         "summary": "Get rental by ID",
         "operationId": "findById_3",
         "parameters": [
@@ -1392,9 +1330,7 @@
     },
     "/api/v1/rentals/user/{userId}": {
       "get": {
-        "tags": [
-          "Rentals"
-        ],
+        "tags": ["Rentals"],
         "summary": "Get rentals by user ID",
         "operationId": "findByUserId",
         "parameters": [
@@ -1432,9 +1368,7 @@
     },
     "/api/v1/payments/user/{userId}": {
       "get": {
-        "tags": [
-          "Payments"
-        ],
+        "tags": ["Payments"],
         "summary": "Get payments by user ID",
         "operationId": "findByUserId_1",
         "parameters": [
@@ -1472,9 +1406,7 @@
     },
     "/api/v1/bicycles/{id}": {
       "get": {
-        "tags": [
-          "Bicycles"
-        ],
+        "tags": ["Bicycles"],
         "summary": "Get bicycle by ID",
         "operationId": "findById_4",
         "parameters": [
@@ -1512,9 +1444,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Bicycles"
-        ],
+        "tags": ["Bicycles"],
         "summary": "Delete a bicycle",
         "operationId": "delete_2",
         "parameters": [
@@ -1543,9 +1473,7 @@
     },
     "/api/v1/bicycles/needs-service": {
       "get": {
-        "tags": [
-          "Bicycles"
-        ],
+        "tags": ["Bicycles"],
         "summary": "Get bicycles that need maintenance",
         "operationId": "findNeedingService",
         "parameters": [
@@ -1574,9 +1502,7 @@
     },
     "/api/v1/auth/info": {
       "get": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "summary": "Get current user information",
         "description": "Returns information about the currently authenticated user",
         "operationId": "info",
@@ -1606,9 +1532,7 @@
     },
     "/api/v1/admin-requests/role": {
       "get": {
-        "tags": [
-          "Admin Requests"
-        ],
+        "tags": ["Admin Requests"],
         "summary": "Get current user's role",
         "operationId": "getCurrentUserRoles",
         "responses": {
@@ -1627,9 +1551,7 @@
     },
     "/api/v1/admin-requests/pending": {
       "get": {
-        "tags": [
-          "Admin Requests"
-        ],
+        "tags": ["Admin Requests"],
         "summary": "Get all pending admin requests",
         "operationId": "getPendingRequests",
         "parameters": [
@@ -1668,9 +1590,7 @@
     },
     "/api/v1/admin-requests/pending/user/{userId}": {
       "get": {
-        "tags": [
-          "Admin Requests"
-        ],
+        "tags": ["Admin Requests"],
         "summary": "Get admin request by user ID",
         "operationId": "getRequestByUserId",
         "parameters": [
@@ -1767,9 +1687,7 @@
         }
       },
       "CompleteRentalRequest": {
-        "required": [
-          "end_station"
-        ],
+        "required": ["end_station"],
         "type": "object",
         "properties": {
           "end_station": {
@@ -1819,11 +1737,7 @@
         }
       },
       "CreateTechnicianRequest": {
-        "required": [
-          "name",
-          "phone",
-          "specialization"
-        ],
+        "required": ["name", "phone", "specialization"],
         "type": "object",
         "properties": {
           "name": {
@@ -1862,10 +1776,7 @@
         }
       },
       "CoordinatesDto": {
-        "required": [
-          "latitude",
-          "longitude"
-        ],
+        "required": ["latitude", "longitude"],
         "type": "object",
         "properties": {
           "latitude": {
@@ -1883,10 +1794,7 @@
         }
       },
       "CreateStationRequest": {
-        "required": [
-          "coordinates",
-          "name"
-        ],
+        "required": ["coordinates", "name"],
         "type": "object",
         "properties": {
           "name": {
@@ -1919,11 +1827,7 @@
         }
       },
       "CreateRepairRequest": {
-        "required": [
-          "bicycleId",
-          "description",
-          "technicianId"
-        ],
+        "required": ["bicycleId", "description", "technicianId"],
         "type": "object",
         "properties": {
           "bicycleId": {
@@ -1942,11 +1846,7 @@
         }
       },
       "CreateRentalRequest": {
-        "required": [
-          "bicycle",
-          "start_station",
-          "user"
-        ],
+        "required": ["bicycle", "start_station", "user"],
         "type": "object",
         "properties": {
           "user": {
@@ -1964,9 +1864,7 @@
         }
       },
       "CreatePaymentRequest": {
-        "required": [
-          "amount"
-        ],
+        "required": ["amount"],
         "type": "object",
         "properties": {
           "amount": {
@@ -1999,11 +1897,7 @@
         }
       },
       "CreateBicycleRequest": {
-        "required": [
-          "model",
-          "stationId",
-          "type"
-        ],
+        "required": ["model", "stationId", "type"],
         "type": "object",
         "properties": {
           "model": {
@@ -2054,10 +1948,7 @@
         }
       },
       "RegisterRequest": {
-        "required": [
-          "password",
-          "username"
-        ],
+        "required": ["password", "username"],
         "type": "object",
         "properties": {
           "username": {
@@ -2132,9 +2023,7 @@
         "description": "Authentication tokens response"
       },
       "RefreshTokenRequest": {
-        "required": [
-          "refresh_token"
-        ],
+        "required": ["refresh_token"],
         "type": "object",
         "properties": {
           "refresh_token": {
@@ -2146,10 +2035,7 @@
         "description": "Refresh token request"
       },
       "LoginRequest": {
-        "required": [
-          "password",
-          "username"
-        ],
+        "required": ["password", "username"],
         "type": "object",
         "properties": {
           "username": {
@@ -2161,10 +2047,7 @@
         }
       },
       "AdminRegisterRequestRequest": {
-        "required": [
-          "description",
-          "username"
-        ],
+        "required": ["description", "username"],
         "type": "object",
         "properties": {
           "username": {
@@ -2192,11 +2075,7 @@
           },
           "status": {
             "type": "string",
-            "enum": [
-              "PENDING",
-              "APPROVED",
-              "REJECTED"
-            ]
+            "enum": ["PENDING", "APPROVED", "REJECTED"]
           },
           "created_date": {
             "type": "string",
